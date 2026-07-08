@@ -59,7 +59,7 @@
   }
 
   textarea {
-    @apply min-h-[180px] resize-y;
+    @apply min-h-45 resize-y;
   }
 
   input:focus,
@@ -162,22 +162,22 @@
     @apply my-[0.9rem] grid gap-[0.4rem];
   }
   .field.compact {
-    @apply max-w-[220px];
+    @apply max-w-55;
   }
   .field span {
     @apply text-muted;
   }
   .inline-field {
-    @apply m-0 min-w-[160px];
+    @apply m-0 min-w-40;
   }
   .upload-domain-field {
-    @apply mx-0 mt-0 mb-3 max-w-[240px];
+    @apply mx-0 mt-0 mb-3 max-w-60;
   }
   .upload-domain-field select {
     @apply rounded-[0.7rem] px-3 py-[0.55rem];
   }
   .session-links-input {
-    @apply min-h-[120px];
+    @apply min-h-30;
   }
 
   .check-row {
@@ -188,12 +188,12 @@
   }
 
   .dropzone {
-    @apply mt-[0.8rem] grid min-h-[110px] cursor-pointer place-items-center gap-1 rounded-xl p-4 text-center;
+    @apply mt-[0.8rem] grid min-h-27.5 cursor-pointer place-items-center gap-1 rounded-xl p-4 text-center;
     border: 1px dashed var(--color-base-300);
     background: var(--color-base-200);
   }
   .compact-dropzone {
-    @apply mt-0 min-h-[88px];
+    @apply mt-0 min-h-22;
   }
   .dropzone input {
     @apply hidden;
@@ -239,7 +239,7 @@
     @apply whitespace-nowrap;
   }
   .summary-actions .inline-field select {
-    @apply w-auto min-w-[160px];
+    @apply w-auto min-w-40;
   }
 
   .history-stat-card,
@@ -255,7 +255,7 @@
   }
   .history-stat-card strong,
   .record-card strong {
-    @apply text-[1.25rem] [overflow-wrap:anywhere];
+    @apply text-[1.25rem] wrap-anywhere;
   }
   .record-card a {
     @apply mt-[0.2rem] text-[0.9rem];
@@ -287,7 +287,7 @@
     @apply overflow-x-auto;
   }
   .trend-chart svg {
-    @apply block w-full min-w-[520px];
+    @apply block w-full min-w-130;
   }
   .trend-axis {
     stroke: color-mix(in oklab, var(--color-base-content) 24%, transparent);
@@ -316,7 +316,7 @@
     @apply overflow-x-auto;
   }
   .recent-runs-table {
-    @apply grid gap-[0.45rem] min-w-[680px];
+    @apply grid gap-[0.45rem] min-w-170;
   }
   .recent-runs-row {
     @apply grid min-w-0 items-center gap-[0.55rem] rounded-[0.7rem] border border-line px-3 py-[0.65rem];
@@ -329,7 +329,7 @@
     @apply border-transparent bg-transparent pt-0 pb-0 text-[0.82rem] font-extrabold text-muted;
   }
   .recent-runs-row > * {
-    @apply min-w-0 [overflow-wrap:anywhere];
+    @apply min-w-0 wrap-anywhere;
   }
   .recent-runs-row span {
     @apply text-muted;
@@ -351,7 +351,7 @@
     @apply text-muted;
   }
   .breakdown-row strong {
-    @apply [overflow-wrap:anywhere];
+    @apply wrap-anywhere;
   }
   .breakdown-mini-stats {
     @apply grid gap-[0.45rem] border-t border-line pt-[0.65rem];
@@ -466,7 +466,7 @@
     background: var(--color-base-100);
   }
   .run-trend {
-    @apply flex items-end gap-[0.35rem] min-h-[90px] w-max min-w-full;
+    @apply flex items-end gap-[0.35rem] min-h-22.5 w-max min-w-full;
   }
   .trend-dot {
     @apply flex items-end justify-center rounded-full;
@@ -514,7 +514,7 @@
     @apply text-muted;
   }
   .run-main strong {
-    @apply [overflow-wrap:anywhere];
+    @apply wrap-anywhere;
   }
   .run-metrics,
   .run-actions {
@@ -601,7 +601,7 @@
     @apply m-0 max-w-none;
   }
   .week-compare-swap {
-    @apply inline-flex min-h-[3rem] min-w-[3rem] cursor-pointer items-center justify-center rounded-[0.9rem] border border-line p-[0.8rem] text-accent-2;
+    @apply inline-flex min-h-12 min-w-12 cursor-pointer items-center justify-center rounded-[0.9rem] border border-line p-[0.8rem] text-accent-2;
     background: var(--color-base-200);
   }
   .week-archive-list {
@@ -735,7 +735,7 @@
     @apply text-muted;
   }
   .time-stats strong {
-    @apply text-[0.92rem] [overflow-wrap:anywhere];
+    @apply text-[0.92rem] wrap-anywhere;
   }
   .time-stats-inline {
     @apply gap-[0.6rem];
@@ -773,7 +773,7 @@
     background: var(--color-base-100);
   }
   .timeline-lines {
-    @apply grid gap-[0.7rem] p-3 min-w-[860px];
+    @apply grid gap-[0.7rem] p-3 min-w-215;
   }
   .timeline-row {
     @apply grid gap-[0.35rem];
@@ -783,7 +783,7 @@
     letter-spacing: 0.08em;
   }
   .timeline-track {
-    @apply flex items-stretch gap-[0.3rem] min-h-[74px];
+    @apply flex items-stretch gap-[0.3rem] min-h-18.5;
   }
   .timeline-row-divider {
     @apply mx-auto mt-[0.2rem] flex w-max max-w-full items-center justify-center gap-2 rounded-full px-3 py-[0.35rem] text-[0.86rem] text-accent-2;
@@ -822,7 +822,7 @@
     background: var(--color-info);
   }
   .timeline-gap {
-    @apply text-muted min-w-[86px];
+    @apply text-muted min-w-21.5;
     border-style: dashed;
   }
   .timeline-gap::before {
@@ -879,7 +879,7 @@
     background: var(--color-surface);
   }
   .linear-timeline-row > * {
-    @apply min-w-0 [overflow-wrap:anywhere];
+    @apply min-w-0 wrap-anywhere;
   }
   .linear-timeline-row span {
     @apply text-muted;
@@ -931,7 +931,7 @@
     @apply text-[0.86rem] text-muted;
   }
   .wing-time-summary strong {
-    @apply [overflow-wrap:anywhere];
+    @apply wrap-anywhere;
   }
   .wing-time-summary + .table-wrap {
     border-radius: 0 0 1rem 1rem;
