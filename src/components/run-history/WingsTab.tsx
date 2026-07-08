@@ -1,4 +1,5 @@
 import { formatSeconds } from "../../lib/format";
+import { panelClass, sectionHeadingClass, statGridClass, tableWrapClass } from "../../lib/ui";
 import type { WingHistorySummary } from "./types";
 import { formatCalendarDate } from "./utils";
 import { StatCard } from "./shared";
@@ -12,13 +13,13 @@ export function WingsTab({ wingSummaries }: { wingSummaries: WingHistorySummary[
 
   return (
     <>
-      <div className="panel">
-        <div className="section-heading">
+      <div className={panelClass}>
+        <div className={sectionHeadingClass}>
           <div>
-            <h3>Wing breakdown</h3>
+            <h3 className="mb-3 mt-0 text-[1.25rem]">Wing breakdown</h3>
           </div>
         </div>
-        <div className="history-stat-grid">
+        <div className={statGridClass}>
           <StatCard
             label="Sum of best"
             value={summedBestTime == null ? "N/A" : formatSeconds(summedBestTime)}
@@ -31,7 +32,7 @@ export function WingsTab({ wingSummaries }: { wingSummaries: WingHistorySummary[
             }
           />
         </div>
-        <div className="table-wrap">
+        <div className={tableWrapClass}>
           <table>
             <thead>
               <tr>

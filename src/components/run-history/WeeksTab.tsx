@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getEncounterSortOrder } from "../../data/encounters";
 import { formatSeconds } from "../../lib/format";
+import { compactFieldClass, cx, fieldClass, overviewGridClass, panelClass, sectionHeadingClass, statGridClass, summaryCardClass, tableWrapClass } from "../../lib/ui";
 import { hasCurrentPhaseData, type RunRecord, type WeekSummary } from "../../lib/runHistory";
 import type { EncounterSummary, HistoryFilterActions, HistoryFilters, RaidNightSummary } from "./types";
 import {
@@ -134,16 +135,16 @@ export function WeeksTab({
         showSortFilter={false}
       />
 
-      <div className="panel">
-        <div className="section-heading">
+      <div className={panelClass}>
+        <div className={sectionHeadingClass}>
           <div>
-            <h3>Week comparison</h3>
+            <h3 className="mb-3 mt-0 text-[1.25rem]">Week comparison</h3>
             <p className="muted">Choose the saved weeks to compare.</p>
           </div>
         </div>
-        <div className="week-compare-controls">
-          <label className="field compact">
-            <span>Selected week</span>
+        <div className="grid items-end gap-[0.9rem] [grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)] max-nav:grid-cols-1">
+          <label className={cx(fieldClass, compactFieldClass, "m-0 max-w-none")}>
+            <span className="text-muted">Selected week</span>
             <select value={selectedWeekKey} onChange={(event) => setSelectedWeekKey(event.target.value)}>
               {weeks.map((week) => (
                 <option value={week.weekKey} key={week.weekKey}>
@@ -154,7 +155,7 @@ export function WeeksTab({
           </label>
           <button
             type="button"
-            className="week-compare-swap"
+            className="inline-flex min-h-12 min-w-12 cursor-pointer items-center justify-center rounded-[0.9rem] border border-line bg-base-200 p-[0.8rem] text-accent-2"
             disabled={!selectedWeek || !compareWeek}
             onClick={() => {
               if (!selectedWeek || !compareWeek) return;
@@ -165,8 +166,8 @@ export function WeeksTab({
           >
             <span aria-hidden="true">&lt;&gt;</span>
           </button>
-          <label className="field compact">
-            <span>Compare against</span>
+          <label className={cx(fieldClass, compactFieldClass, "m-0 max-w-none")}>
+            <span className="text-muted">Compare against</span>
             <select value={compareWeekKey} onChange={(event) => setCompareWeekKey(event.target.value)}>
               <option value="none">No comparison</option>
               {weeks.map((week) => (
@@ -179,15 +180,15 @@ export function WeeksTab({
         </div>
       </div>
 
-      <div className="panel">
-        <div className="section-heading">
+      <div className={panelClass}>
+        <div className={sectionHeadingClass}>
           <div>
-            <h3>{selectedWeek ? `Comparing ${selectedWeek.weekKey}` : "Week comparison"}</h3>
+            <h3 className="mb-3 mt-0 text-[1.25rem]">{selectedWeek ? `Comparing ${selectedWeek.weekKey}` : "Week comparison"}</h3>
             <p className="muted">{compareWeek ? `Against ${compareWeek.weekKey}` : "Select a second week to compare against."}</p>
           </div>
         </div>
         {selectedWeek ? (
-          <div className="history-stat-grid">
+          <div className={statGridClass}>
             <StatCard
               label="Total"
               value={formatSeconds(selectedTiming.totalTime)}
@@ -214,17 +215,17 @@ export function WeeksTab({
         )}
       </div>
 
-      <div className="panel">
-        <div className="section-heading">
+      <div className={panelClass}>
+        <div className={sectionHeadingClass}>
           <div>
-            <h3>Wing performance</h3>
+            <h3 className="mb-3 mt-0 text-[1.25rem]">Wing performance</h3>
             <p className="muted">
               {selectedWeek ? `Click a wing to inspect encounter, downtime, and player detail.` : "Select a week to compare wing performance."}
             </p>
           </div>
         </div>
         {selectedWeek ? (
-          <div className="table-wrap">
+          <div className={tableWrapClass}>
             <table>
               <thead>
                 <tr>
@@ -237,7 +238,7 @@ export function WeeksTab({
               </thead>
               <tbody>
                 {wingRows.map((row) => (
-                  <tr className={selectedWing === row.wing ? "selected-row" : ""} onClick={() => setSelectedWing(row.wing)} key={row.wing}>
+                  <tr className={cx("cursor-pointer hover:bg-primary/8", selectedWing === row.wing && "bg-primary/8")} onClick={() => setSelectedWing(row.wing)} key={row.wing}>
                     <td>Wing {row.wing}</td>
                     <td>{row.current == null ? "N/A" : formatSeconds(row.current)}</td>
                     <td>{row.previous == null ? "N/A" : formatSeconds(row.previous)}</td>
@@ -253,10 +254,10 @@ export function WeeksTab({
         )}
       </div>
 
-      <div className="panel">
-        <div className="section-heading">
+      <div className={panelClass}>
+        <div className={sectionHeadingClass}>
           <div>
-            <h3>Selected wing detail</h3>
+            <h3 className="mb-3 mt-0 text-[1.25rem]">Selected wing detail</h3>
             <p className="muted">
               {selectedWing != null
                 ? `${formatWing(selectedWing)}${selectedWeek ? ` - ${selectedWeek.weekKey}` : ""}${compareWeek ? ` vs ${compareWeek.weekKey}` : ""}`
@@ -319,14 +320,14 @@ export function WeeksTab({
         )}
       </div>
 
-      <div className="panel">
-        <div className="section-heading">
+      <div className={panelClass}>
+        <div className={sectionHeadingClass}>
           <div>
-            <h3>Weekly summaries</h3>
+            <h3 className="mb-3 mt-0 text-[1.25rem]">Weekly summaries</h3>
             <p className="muted">Saved week archive.</p>
           </div>
         </div>
-        <div className="weekly-list week-archive-list">
+        <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
           {weeks.map((week) => (
             <WeekSummaryCard
               week={week}
@@ -354,36 +355,36 @@ function WingOverviewPanel({
   compareDetail: WingWeekDetail;
 }) {
   return (
-    <div className="history-overview-grid">
-      <article className="record-card">
-        <span>{selectedWeek?.weekKey ?? "Selected week"}</span>
-        <strong>{selectedDetail ? formatSeconds(selectedDetail.totalTime) : "N/A"}</strong>
-        <small>{selectedDetail?.encounterLabel ?? "No selected-week data for this wing"}</small>
-        <small>
+    <div className={overviewGridClass}>
+      <article className={summaryCardClass}>
+        <span className="text-muted">{selectedWeek?.weekKey ?? "Selected week"}</span>
+        <strong className="wrap-anywhere text-[1.25rem]">{selectedDetail ? formatSeconds(selectedDetail.totalTime) : "N/A"}</strong>
+        <small className="text-muted">{selectedDetail?.encounterLabel ?? "No selected-week data for this wing"}</small>
+        <small className="text-muted">
           Combat {selectedDetail ? formatSeconds(selectedDetail.combatTime) : "N/A"} | Downtime {selectedDetail ? formatSeconds(selectedDetail.downtime) : "N/A"} |{" "}
           {selectedDetail ? `${selectedDetail.kills} kills / ${selectedDetail.wipes} wipes` : "No data"}
         </small>
       </article>
-      <article className="record-card">
-        <span>{compareWeek?.weekKey ?? "Comparison"}</span>
-        <strong>{compareDetail ? formatSeconds(compareDetail.totalTime) : "N/A"}</strong>
-        <small>{compareDetail?.encounterLabel ?? "No comparison selected"}</small>
-        <small>
+      <article className={summaryCardClass}>
+        <span className="text-muted">{compareWeek?.weekKey ?? "Comparison"}</span>
+        <strong className="wrap-anywhere text-[1.25rem]">{compareDetail ? formatSeconds(compareDetail.totalTime) : "N/A"}</strong>
+        <small className="text-muted">{compareDetail?.encounterLabel ?? "No comparison selected"}</small>
+        <small className="text-muted">
           Combat {compareDetail ? formatSeconds(compareDetail.combatTime) : "N/A"} | Downtime {compareDetail ? formatSeconds(compareDetail.downtime) : "N/A"} |{" "}
           {compareDetail ? `${compareDetail.kills} kills / ${compareDetail.wipes} wipes` : "No data"}
         </small>
       </article>
-      <article className="record-card">
-        <span>Time change</span>
-        <strong>{formatTimeDelta(selectedDetail?.totalTime, compareDetail?.totalTime)}</strong>
-        <small>{formatTimeDelta(selectedDetail?.combatTime, compareDetail?.combatTime)} combat</small>
-        <small>{formatTimeDelta(selectedDetail?.downtime, compareDetail?.downtime)} downtime</small>
+      <article className={summaryCardClass}>
+        <span className="text-muted">Time change</span>
+        <strong className="wrap-anywhere text-[1.25rem]">{formatTimeDelta(selectedDetail?.totalTime, compareDetail?.totalTime)}</strong>
+        <small className="text-muted">{formatTimeDelta(selectedDetail?.combatTime, compareDetail?.combatTime)} combat</small>
+        <small className="text-muted">{formatTimeDelta(selectedDetail?.downtime, compareDetail?.downtime)} downtime</small>
       </article>
-      <article className="record-card">
-        <span>Squad DPS</span>
-        <strong>{formatDps(selectedDetail?.averageCompDps ?? null)}</strong>
-        <small>{selectedWeek?.weekKey ?? "Selected"} average comp DPS</small>
-        <small>{compareWeek ? `${compareWeek.weekKey}: ${formatDps(compareDetail?.averageCompDps ?? null)}` : "No comparison selected"}</small>
+      <article className={summaryCardClass}>
+        <span className="text-muted">Squad DPS</span>
+        <strong className="wrap-anywhere text-[1.25rem]">{formatDps(selectedDetail?.averageCompDps ?? null)}</strong>
+        <small className="text-muted">{selectedWeek?.weekKey ?? "Selected"} average comp DPS</small>
+        <small className="text-muted">{compareWeek ? `${compareWeek.weekKey}: ${formatDps(compareDetail?.averageCompDps ?? null)}` : "No comparison selected"}</small>
       </article>
     </div>
   );
@@ -412,7 +413,7 @@ function WingEncounterPanel({
   }
 
   return (
-    <div className="table-wrap">
+    <div className={tableWrapClass}>
       <table>
         <thead>
           <tr>
@@ -469,7 +470,7 @@ function WingDowntimePanel({
   }
 
   return (
-    <div className="table-wrap">
+    <div className={tableWrapClass}>
       <table>
         <thead>
           <tr>
@@ -538,8 +539,8 @@ function WingPlayersPanel({
         Loaded {selectedCached}/{selectedRuns.length} run{selectedRuns.length === 1 ? "" : "s"} for {selectedWeek?.weekKey ?? "selected"}
         {compareWeek ? ` and ${compareCached}/${compareRuns.length} for ${compareWeek.weekKey}` : ""}.
       </p>
-      <div className="table-wrap">
-        <table className="week-player-table">
+      <div className={tableWrapClass}>
+        <table className="table-fixed">
           <thead>
             <tr>
               <th>Player</th>
@@ -551,9 +552,9 @@ function WingPlayersPanel({
             {rows.map((row) => (
               <tr key={row.key}>
                 <td>
-                  <div className="week-player-cell">
+                  <div className="grid gap-[0.15rem]">
                     <strong>{row.name}</strong>
-                    <small>{[row.professions.join(", "), row.account].filter(Boolean).join(" | ") || "No account data"}</small>
+                    <small className="block">{[row.professions.join(", "), row.account].filter(Boolean).join(" | ") || "No account data"}</small>
                   </div>
                 </td>
                 <td>{renderPlayerEncounterBreakdown(row.current)}</td>
@@ -582,16 +583,23 @@ function WeekSummaryCard({
   const weekLabel = formatWeekSummaryLabel(week.weekKey, runs);
 
   return (
-    <article className={`week-card ${isSelected ? "selected" : ""} ${isCompare ? "compare-selected" : ""}`}>
-      <div className="week-card-header">
+    <article
+      className={cx(
+        "grid gap-[0.8rem] rounded-xl border border-line bg-surface p-[0.85rem]",
+        isSelected && "border-warning/45 bg-warning/10",
+        isCompare && "border-info/40 bg-info/10",
+        isSelected && isCompare && "border-primary/50 bg-primary/10",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
         <div>
           <span className="eyebrow">{weekLabel}</span>
-          <h4>{week.runs} saved runs</h4>
+          <h4 className="mb-0 mt-[0.05rem] text-[1.05rem]">{week.runs} saved runs</h4>
         </div>
-        <div className="week-card-header-actions">
+        <div className="grid justify-items-end gap-[0.35rem]">
           <span className="badge badge-outline">{formatPercent(week.killRate)} kill rate</span>
-          {isSelected ? <span className="week-card-selected-label">Selected</span> : null}
-          {isCompare ? <span className="week-card-selected-label">Compare</span> : null}
+          {isSelected ? <span className="text-[0.82rem] font-black uppercase text-accent-2 tracking-[0.04em]">Selected</span> : null}
+          {isCompare ? <span className="text-[0.82rem] font-black uppercase text-accent-2 tracking-[0.04em]">Compare</span> : null}
         </div>
       </div>
 
@@ -599,7 +607,7 @@ function WeekSummaryCard({
         <span style={{ width: `${Math.round((week.killRate ?? 0) * 100)}%` }} />
       </div>
 
-      <div className="week-summary-inline muted">
+      <div className="flex flex-wrap gap-x-4 gap-y-[0.45rem] text-[0.92rem] text-muted">
         <span>Total {formatSeconds(timing.totalTime)}</span>
         <span>Combat {formatSeconds(timing.combatTime)}</span>
         <span>Downtime {formatSeconds(timing.downtime)}</span>
@@ -806,11 +814,11 @@ function renderPlayerEncounterBreakdown(player: PlayerAggregate | null) {
   }
 
   return (
-    <div className="week-player-encounters">
+    <div className="grid gap-[0.35rem]">
       {player.encounterEntries.map((entry) => (
-        <div className="week-player-encounter-row" key={entry.encounter}>
-          <span>{entry.encounter}</span>
-          <strong>{formatDps(entry.dps)}</strong>
+        <div className="flex items-baseline justify-between gap-3 rounded-[0.55rem] border border-base-200 bg-base-200 px-[0.6rem] py-[0.45rem]" key={entry.encounter}>
+          <span className="text-muted">{entry.encounter}</span>
+          <strong className="whitespace-nowrap">{formatDps(entry.dps)}</strong>
         </div>
       ))}
     </div>

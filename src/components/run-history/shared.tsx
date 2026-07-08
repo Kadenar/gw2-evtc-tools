@@ -1,5 +1,15 @@
 import { formatSeconds } from "../../lib/format";
 import type { RunRecord } from "../../lib/runHistory";
+import {
+  compactFieldClass,
+  cx,
+  fieldClass,
+  filterGridClass,
+  inlineActionsClass,
+  panelClass,
+  sectionHeadingClass,
+  summaryCardClass,
+} from "../../lib/ui";
 import type { HistoryFilterActions, HistoryFilters, RaidNightSummary, ResultFilter, SessionTypeFilter, SortMode } from "./types";
 import {
   buildTimelineRows,
@@ -10,7 +20,6 @@ import {
   formatRunSessionType,
   formatWing,
   getResultBadgeClass,
-  getResultClass,
   getRunSessionType,
   getRunStart,
 } from "./utils";
@@ -33,25 +42,26 @@ export function HistoryFilterPanel({
   showSortFilter?: boolean;
 }) {
   const { query, weekFilter, wingFilter, resultFilter, cmFilter, sessionTypeFilter, sortMode } = filters;
+  const fieldClasses = cx(fieldClass, compactFieldClass);
 
   return (
-    <div className="panel">
-      <div className="section-heading">
+    <div className={panelClass}>
+      <div className={sectionHeadingClass}>
         <div>
-          <h3>{title}</h3>
+          <h3 className="mb-3 mt-0 text-[1.25rem]">{title}</h3>
         </div>
         <button type="button" className="btn btn-ghost btn-sm" onClick={filterActions.resetFilters}>
           Reset
         </button>
       </div>
-      <div className="history-filter-grid">
-        <label className="field compact">
-          <span>Encounter</span>
+      <div className={filterGridClass}>
+        <label className={fieldClasses}>
+          <span className="text-muted">Encounter</span>
           <input value={query} onChange={(event) => filterActions.setQuery(event.target.value)} placeholder="Search boss..." />
         </label>
         {showWeekFilter ? (
-          <label className="field compact">
-            <span>Week</span>
+          <label className={fieldClasses}>
+            <span className="text-muted">Week</span>
             <select value={weekFilter} onChange={(event) => filterActions.setWeekFilter(event.target.value)}>
               <option value="all">All weeks</option>
               {weekOptions.map((weekKey) => (
@@ -62,8 +72,8 @@ export function HistoryFilterPanel({
             </select>
           </label>
         ) : null}
-        <label className="field compact">
-          <span>Wing</span>
+        <label className={fieldClasses}>
+          <span className="text-muted">Wing</span>
           <select value={wingFilter} onChange={(event) => filterActions.setWingFilter(event.target.value)}>
             <option value="all">All wings</option>
             <option value="unmapped">Unmapped</option>
@@ -74,8 +84,8 @@ export function HistoryFilterPanel({
             ))}
           </select>
         </label>
-        <label className="field compact">
-          <span>Result</span>
+        <label className={fieldClasses}>
+          <span className="text-muted">Result</span>
           <select value={resultFilter} onChange={(event) => filterActions.setResultFilter(event.target.value as ResultFilter)}>
             <option value="all">All results</option>
             <option value="kill">Kills</option>
@@ -83,16 +93,16 @@ export function HistoryFilterPanel({
             <option value="unknown">Unknown</option>
           </select>
         </label>
-        <label className="field compact">
-          <span>Mode</span>
+        <label className={fieldClasses}>
+          <span className="text-muted">Mode</span>
           <select value={cmFilter} onChange={(event) => filterActions.setCmFilter(event.target.value as HistoryFilters["cmFilter"])}>
             <option value="all">CM and normal</option>
             <option value="cm">CM only</option>
             <option value="normal">Normal only</option>
           </select>
         </label>
-        <label className="field compact">
-          <span>Session</span>
+        <label className={fieldClasses}>
+          <span className="text-muted">Session</span>
           <select value={sessionTypeFilter} onChange={(event) => filterActions.setSessionTypeFilter(event.target.value as SessionTypeFilter)}>
             <option value="all">All sessions</option>
             <option value="full-clear">Full clear</option>
@@ -100,8 +110,8 @@ export function HistoryFilterPanel({
           </select>
         </label>
         {showSortFilter ? (
-          <label className="field compact">
-            <span>Sort</span>
+          <label className={fieldClasses}>
+            <span className="text-muted">Sort</span>
             <select value={sortMode} onChange={(event) => filterActions.setSortMode(event.target.value as SortMode)}>
               <option value="newest">Newest first</option>
               <option value="oldest">Oldest first</option>
@@ -118,8 +128,8 @@ export function HistoryFilterPanel({
 
 export function RaidNightDetail({ night }: { night: RaidNightSummary }) {
   return (
-    <div className="raid-night-detail">
-      <div className="time-stats week-stats time-stats-inline">
+    <div className="grid gap-[0.65rem]">
+      <div className="grid gap-[0.6rem] grid-cols-[repeat(auto-fit,minmax(150px,1fr))]">
         <Metric label="Total time" value={formatSeconds(night.totalTime)} />
         <Metric label="Combat time" value={formatSeconds(night.combatTime)} />
         <Metric label="Downtime" value={formatSeconds(night.downtime)} />
@@ -133,9 +143,9 @@ export function RaidNightDetail({ night }: { night: RaidNightSummary }) {
 
 export function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <span>{label}</span>
-      <strong>{value}</strong>
+    <div className="flex items-baseline justify-between gap-[0.55rem] rounded-[0.7rem] border border-line bg-base-200 px-[0.7rem] py-[0.55rem]">
+      <span className="whitespace-nowrap text-muted">{label}</span>
+      <strong className="whitespace-nowrap">{value}</strong>
     </div>
   );
 }
@@ -144,21 +154,34 @@ export function RunTimeline({ night }: { night: RaidNightSummary }) {
   const rows = buildTimelineRows(night);
 
   return (
-    <div className="linear-timeline">
+    <div className="grid gap-[0.65rem]">
       {rows.map((row) =>
         row.type === "run" ? (
-          <a className={`linear-timeline-row ${getResultClass(row.run.success)}`} href={row.run.permalink} target="_blank" rel="noreferrer" key={row.id}>
-            <span>{formatClock(getRunStart(row.run))}</span>
-            <strong>{row.run.bossName}</strong>
-            <span>{formatResult(row.run.success)}</span>
-            <span>{formatSeconds(row.run.duration)}</span>
+          <a
+            className={cx(
+              "grid min-w-0 items-center gap-[0.55rem] rounded-[0.7rem] border border-line bg-surface px-[0.8rem] py-[0.7rem] text-fg no-underline grid-cols-[82px_minmax(160px,1fr)_fit-content(140px)_72px] max-nav:grid-cols-1",
+              row.run.success === true && "border-success/40",
+              row.run.success === false && "border-error/40",
+            )}
+            href={row.run.permalink}
+            target="_blank"
+            rel="noreferrer"
+            key={row.id}
+          >
+            <span className="min-w-0 wrap-anywhere text-muted">{formatClock(getRunStart(row.run))}</span>
+            <strong className="min-w-0 wrap-anywhere">{row.run.bossName}</strong>
+            <span className="min-w-0 whitespace-nowrap text-muted">{formatResult(row.run.success)}</span>
+            <span className="min-w-0 whitespace-nowrap text-muted">{formatSeconds(row.run.duration)}</span>
           </a>
         ) : (
-          <div className="linear-timeline-row downtime" key={row.id}>
-            <span />
-            <strong>{row.label}</strong>
-            <span>{row.source}</span>
-            <span>{formatSeconds(row.seconds)}</span>
+          <div
+            className="grid min-w-0 items-center gap-[0.55rem] rounded-[0.7rem] border border-line border-dashed bg-base-200 px-[0.8rem] py-[0.7rem] text-fg grid-cols-[82px_minmax(160px,1fr)_fit-content(140px)_72px] max-nav:grid-cols-1"
+            key={row.id}
+          >
+            <span className="min-w-0 wrap-anywhere text-muted" />
+            <strong className="min-w-0 wrap-anywhere">{row.label}</strong>
+            <span className="min-w-0 whitespace-nowrap text-muted">{row.source}</span>
+            <span className="min-w-0 whitespace-nowrap text-muted">{formatSeconds(row.seconds)}</span>
           </div>
         ),
       )}
@@ -168,10 +191,10 @@ export function RunTimeline({ night }: { night: RaidNightSummary }) {
 
 export function StatCard({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <article className="history-stat-card">
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{detail}</small>
+    <article className={summaryCardClass}>
+      <span className="text-muted">{label}</span>
+      <strong className="wrap-anywhere text-[1.25rem]">{value}</strong>
+      <small className="text-muted">{detail}</small>
     </article>
   );
 }
@@ -192,26 +215,35 @@ export function RunCard({
   onDelete: () => void;
 }) {
   return (
-    <article className={`run-card ${selected ? "selected" : ""}`}>
-      <label className="run-select">
-        <input type="checkbox" checked={selected} onChange={onToggleSelected} />
+    <article
+      className={cx(
+        "grid items-center gap-3 rounded-xl border border-line bg-surface px-[0.8rem] py-[0.7rem] grid-cols-[auto_minmax(220px,1fr)_minmax(220px,auto)_auto] max-nav:grid-cols-1",
+        selected && "border-primary/55 bg-primary/8",
+      )}
+    >
+      <label>
+        <input className="w-auto" type="checkbox" checked={selected} onChange={onToggleSelected} />
         <span className="sr-only">Select run</span>
       </label>
-      <button type="button" className="run-main" onClick={onSelectEncounter}>
-        <span className="run-date">{formatRunDate(run)}</span>
+      <button
+        type="button"
+        className="grid min-w-0 cursor-pointer gap-[0.1rem] rounded-[0.65rem] border border-transparent bg-transparent p-[0.35rem] text-left text-fg hover:border-primary/50"
+        onClick={onSelectEncounter}
+      >
+        <span className="text-muted">{formatRunDate(run)}</span>
         <strong>
           {run.bossName}
           {run.isCm ? <span className="badge badge-sm badge-outline ml-1">CM</span> : null}
           <span className="badge badge-sm badge-outline ml-1">{formatRunSessionType(getRunSessionType(run))}</span>
         </strong>
-        <span>{formatWing(run.wing)}</span>
+        <span className="text-muted">{formatWing(run.wing)}</span>
       </button>
-      <div className="run-metrics">
+      <div className="flex flex-wrap items-center justify-end gap-2 max-nav:justify-start">
         <span className={`badge ${getResultBadgeClass(run.success)}`}>{formatResult(run.success)}</span>
         <span>{formatSeconds(run.duration)}</span>
         <span>{formatDps(run.compDps)}</span>
       </div>
-      <div className="run-actions">
+      <div className={cx(inlineActionsClass, "justify-end max-nav:justify-start")}>
         <a href={run.permalink} target="_blank" rel="noreferrer">
           Open
         </a>

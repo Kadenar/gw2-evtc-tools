@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { getEncounterName } from "../data/encounters";
 import { downloadBlob, makeSafeFilename } from "../lib/format";
+import { compactFieldClass, cx, fieldClass, panelClass, toolSplitClass } from "../lib/ui";
 import { ExtractedEvtc, EvtcHeaderInfo, parseEvtcHeader, readEvtcFile, repackEvtc, rewriteEvtcBossId } from "../lib/evtc";
 
 type LoadedLog = {
@@ -75,9 +76,9 @@ export function TriggerRewriter() {
   }
 
   return (
-    <section className="grid gap-4 grid-cols-[minmax(0,0.95fr)_minmax(360px,1.05fr)] max-nav:grid-cols-1">
-      <div className="panel">
-        <h2>ID Rewriter</h2>
+    <section className={toolSplitClass}>
+      <div className={panelClass}>
+        <h2 className="mb-2 mt-0 text-[1.5rem] leading-[1.2]">ID Rewriter</h2>
         <p>
           Missing Sabetha or Xera logs? Your data is probably in the previous log. A separate one was not generated because your entire squad was never out of combat.
         </p>
@@ -102,33 +103,33 @@ export function TriggerRewriter() {
         {message && <div role="alert" className="alert alert-success mt-3">{message}</div>}
       </div>
 
-      <div className="panel">
-        <h3>Rewrite settings</h3>
+      <div className={panelClass}>
+        <h3 className="mb-3 mt-0 text-[1.25rem]">Rewrite settings</h3>
         {!loaded ? (
           <p className="text-muted">Upload a file to inspect its header.</p>
         ) : (
           <>
-            <div className="stat-list">
-              <div>
-                <span>Detected file</span>
+            <div className="my-4 grid grid-cols-2 gap-3 max-nav:grid-cols-1">
+              <div className="grid gap-[0.2rem] rounded-2xl border border-line bg-base-200 p-[0.85rem]">
+                <span className="text-muted">Detected file</span>
                 <strong>{loaded.file.name}</strong>
               </div>
-              <div>
-                <span>Container</span>
+              <div className="grid gap-[0.2rem] rounded-2xl border border-line bg-base-200 p-[0.85rem]">
+                <span className="text-muted">Container</span>
                 <strong>{loaded.extracted.kind}</strong>
               </div>
-              <div>
-                <span>EVTC version</span>
+              <div className="grid gap-[0.2rem] rounded-2xl border border-line bg-base-200 p-[0.85rem]">
+                <span className="text-muted">EVTC version</span>
                 <strong>{loaded.header.version}</strong>
               </div>
-              <div>
-                <span>Current trigger</span>
+              <div className="grid gap-[0.2rem] rounded-2xl border border-line bg-base-200 p-[0.85rem]">
+                <span className="text-muted">Current trigger</span>
                 <strong>
                   {currentBossLabel} {loaded.header.bossId ? `(${loaded.header.bossId})` : ""}
                 </strong>
               </div>
-              <div>
-                <span>Boss ID offset</span>
+              <div className="grid gap-[0.2rem] rounded-2xl border border-line bg-base-200 p-[0.85rem]">
+                <span className="text-muted">Boss ID offset</span>
                 <strong>0x{activeOffset.toString(16).toUpperCase()}</strong>
               </div>
             </div>
@@ -147,8 +148,8 @@ export function TriggerRewriter() {
 
             <details className="my-4 rounded-2xl border border-line bg-black/[0.16] p-[0.85rem]">
               <summary className="cursor-pointer font-extrabold">Advanced header details</summary>
-              <label className="field compact">
-                <span>Manual boss-id offset</span>
+              <label className={cx(fieldClass, compactFieldClass)}>
+                <span className="text-muted">Manual boss-id offset</span>
                 <input
                   type="number"
                   min={0}

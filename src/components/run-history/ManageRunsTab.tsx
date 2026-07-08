@@ -1,4 +1,5 @@
 import type { RunRecord } from "../../lib/runHistory";
+import { inlineActionsClass, panelClass, sectionHeadingClass } from "../../lib/ui";
 import type { HistoryFilterActions, HistoryFilters } from "./types";
 import { HistoryFilterPanel, RunCard } from "./shared";
 
@@ -41,15 +42,15 @@ export function ManageRunsTab({
         title="Manage pulls"
       />
 
-      <div className="panel">
-        <div className="section-heading">
+      <div className={panelClass}>
+        <div className={sectionHeadingClass}>
           <div>
-            <h3>Individual pulls</h3>
+            <h3 className="mb-3 mt-0 text-[1.25rem]">Individual pulls</h3>
             <p className="muted">
               {sortedRuns.length} visible, {selectedRunIds.length} selected.
             </p>
           </div>
-          <div className="inline-actions">
+          <div className={inlineActionsClass}>
             <button type="button" className="btn btn-sm" disabled={!sortedRuns.length} onClick={onToggleVisibleSelection}>
               {allVisibleSelected ? "Unselect visible" : "Select visible"}
             </button>
@@ -59,7 +60,7 @@ export function ManageRunsTab({
           </div>
         </div>
         {sortedRuns.length ? (
-          <div className="run-card-list">
+          <div className="grid gap-[0.45rem]">
             {sortedRuns.map((run) => (
               <RunCard
                 run={run}
