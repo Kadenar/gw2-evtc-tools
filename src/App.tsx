@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { TriggerRewriter } from "./components/TriggerRewriter";
+import { RunHistory } from "./components/RunHistory";
 import { SessionTimer } from "./components/SessionTimer";
 import "./styles.css";
 
-type Tool = "rewriter" | "timer";
+type Tool = "rewriter" | "timer" | "history";
 
 export default function App() {
   const [tool, setTool] = useState<Tool>("rewriter");
@@ -24,9 +25,14 @@ export default function App() {
         <button type="button" className={tool === "timer" ? "active" : ""} onClick={() => setTool("timer")}>
           Raid Session Timer
         </button>
+        <button type="button" className={tool === "history" ? "active" : ""} onClick={() => setTool("history")}>
+          Run History
+        </button>
       </nav>
 
-      {tool === "rewriter" ? <TriggerRewriter /> : <SessionTimer />}
+      {tool === "rewriter" ? <TriggerRewriter /> : null}
+      {tool === "timer" ? <SessionTimer /> : null}
+      {tool === "history" ? <RunHistory /> : null}
     </main>
   );
 }

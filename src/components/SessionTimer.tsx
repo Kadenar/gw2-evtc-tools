@@ -11,6 +11,7 @@ import {
 } from "../lib/dpsReport";
 import { downloadBlob } from "../lib/format";
 import { formatDateTime, formatSeconds } from "../lib/format";
+import { RunSessionType, saveSessionLogs } from "../lib/runHistory";
 
 type BreakdownView = "timeline" | "details";
 
@@ -53,7 +54,9 @@ export function SessionTimer() {
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [anonymous, setAnonymous] = useState(false);
   const [progress, setProgress] = useState("");
+  const [historyStatus, setHistoryStatus] = useState("");
   const [breakdownView, setBreakdownView] = useState<BreakdownView>("timeline");
+  const [runSessionType, setRunSessionType] = useState<RunSessionType>("full-clear");
 
   const summary = useMemo(() => summarizeSession(logs), [logs]);
   const logDetailGroups = useMemo(() => summary.wings.filter((wing) => wing.logs.length > 0), [summary.wings]);
@@ -112,6 +115,23 @@ export function SessionTimer() {
     setLogs([]);
     setErrors([]);
     setProgress("");
+    setHistoryStatus("");
+  }
+
+  async function saveToRunHistory() {
+    setIsWorking(true);
+    setHistoryStatus("Saving run history...");
+
+    try {
+      const result = await saveSessionLogs(summary.logs, runSessionType);
+      setHistoryStatus(
+        `Saved ${result.saved} new and updated ${result.updated} existing run${result.updated === 1 ? "" : "s"} as ${formatRunSessionType(runSessionType)}.`,
+      );
+    } catch (err) {
+      setHistoryStatus(err instanceof Error ? err.message : "Could not save run history.");
+    } finally {
+      setIsWorking(false);
+    }
   }
 
   function exportCsv() {
@@ -194,18 +214,30 @@ export function SessionTimer() {
           <div>
             <h3>Session summary</h3>
           </div>
-          <div className="inline-actions">
+          <div className="inline-actions summary-actions">
+            <label className="field compact inline-field">
+              <span>History type</span>
+              <select value={runSessionType} disabled={isWorking} onChange={(event) => setRunSessionType(event.target.value as RunSessionType)}>
+                <option value="full-clear">Full clear</option>
+                <option value="practice">Practice</option>
+              </select>
+            </label>
             <button type="button" className="secondary" disabled={!logs.length} onClick={exportCsv}>
               Export CSV
             </button>
             <button type="button" className="secondary" disabled={!logs.length} onClick={exportJson}>
               Export JSON
             </button>
+            <button type="button" className="secondary" disabled={!logs.length || isWorking} onClick={saveToRunHistory}>
+              Save to Run History
+            </button>
             <button type="button" className="ghost" disabled={!logs.length} onClick={clearAll}>
               Clear
             </button>
           </div>
         </div>
+
+        {historyStatus ? <p className="status-text">{historyStatus}</p> : null}
 
         <div className="time-sections single-summary">
           <article className="time-section full-session">
@@ -516,6 +548,10 @@ function getPullResult(log: SessionLog): string {
 function getPullClass(log: SessionLog): string {
   if (log.success == null) return "unknown";
   return log.success ? "kill" : "wipe";
+}
+
+function formatRunSessionType(sessionType: RunSessionType): string {
+  return sessionType === "full-clear" ? "full clear" : "practice";
 }
 
 function formatWing(wing: number | null): string {

@@ -1,0 +1,437 @@
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { downloadBlob } from "../lib/format";
+import { fetchEncounterPhaseData } from "../lib/dpsReport";
+import {
+  ImportMode,
+  RunRecord,
+  clearRunHistory,
+  deleteRunRecord,
+  exportRunHistoryBackup,
+  getAllRunRecords,
+  hasCurrentPhaseData,
+  importRunHistoryBackup,
+  isRunHistorySupported,
+  saveRunRecord,
+  summarizeRunsByWeek,
+} from "../lib/runHistory";
+import { DashboardTab } from "./run-history/DashboardTab";
+import { DowntimeTab } from "./run-history/DowntimeTab";
+import { EncountersTab } from "./run-history/EncountersTab";
+import { RunsTab } from "./run-history/RunsTab";
+import { WeeksTab } from "./run-history/WeeksTab";
+import { WingsTab } from "./run-history/WingsTab";
+import type { HistoryView, SessionTypeFilter } from "./run-history/types";
+import { useRunHistoryFilters } from "./run-history/useRunHistoryFilters";
+import {
+  buildRaidNightSummaries,
+  buildRecordHighlights,
+  buildWingHistorySummaries,
+  runsToCsv,
+  summarizeEncounters,
+} from "./run-history/utils";
+
+const HISTORY_VIEWS: Array<{ id: HistoryView; label: string; group: "Primary" | "Analysis" }> = [
+  { id: "dashboard", label: "Dashboard", group: "Primary" },
+  { id: "runs", label: "Runs", group: "Primary" },
+  { id: "weeks", label: "Weeks", group: "Primary" },
+  { id: "wings", label: "Wings", group: "Analysis" },
+  { id: "encounters", label: "Encounters", group: "Analysis" },
+  { id: "downtime", label: "Downtime", group: "Analysis" },
+];
+
+export function RunHistory() {
+  const [runs, setRuns] = useState<RunRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isWorking, setIsWorking] = useState(false);
+  const [status, setStatus] = useState("");
+  const [importMode, setImportMode] = useState<ImportMode>("merge");
+  const [view, setView] = useState<HistoryView>("dashboard");
+  const [expandedWeekKeys, setExpandedWeekKeys] = useState<string[]>([]);
+  const [selectedEncounterKey, setSelectedEncounterKey] = useState<string | null>(null);
+  const [selectedNightKey, setSelectedNightKey] = useState<string | null>(null);
+  const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
+  const [phaseLoadByRunId, setPhaseLoadByRunId] = useState<Record<string, boolean>>({});
+  const [phaseErrorByRunId, setPhaseErrorByRunId] = useState<Record<string, string>>({});
+
+  const { filters, filterActions, filteredRuns, scopedRuns, sortedRuns, weekOptions, wingOptions } = useRunHistoryFilters(runs);
+  const weeks = useMemo(() => summarizeRunsByWeek(filteredRuns), [filteredRuns]);
+  const raidNights = useMemo(() => buildRaidNightSummaries(scopedRuns), [scopedRuns]);
+  const filteredRaidNights = useMemo(() => buildRaidNightSummaries(filteredRuns), [filteredRuns]);
+  const wingSummaries = useMemo(() => buildWingHistorySummaries(scopedRuns), [scopedRuns]);
+  const encounterSummaries = useMemo(() => summarizeEncounters(scopedRuns), [scopedRuns]);
+  const filteredEncounterSummaries = useMemo(() => summarizeEncounters(filteredRuns), [filteredRuns]);
+  const records = useMemo(() => buildRecordHighlights(scopedRuns, encounterSummaries), [encounterSummaries, scopedRuns]);
+  const latestNight = raidNights[0] ?? null;
+  const previousNight = raidNights[1] ?? null;
+  const selectedNight = filteredRaidNights.find((night) => night.key === selectedNightKey) ?? filteredRaidNights[0] ?? raidNights[0] ?? null;
+  const selectedEncounter = filteredEncounterSummaries.find((encounter) => encounter.encounterKey === selectedEncounterKey);
+  const visibleSelectedCount = selectedRunIds.filter((id) => sortedRuns.some((run) => run.id === id)).length;
+  const hasRuns = runs.length > 0;
+  const allVisibleSelected = sortedRuns.length > 0 && visibleSelectedCount === sortedRuns.length;
+
+  useEffect(() => {
+    void loadRuns();
+  }, []);
+
+  useEffect(() => {
+    if (!weeks.length) {
+      setExpandedWeekKeys([]);
+      return;
+    }
+
+    setExpandedWeekKeys((current) => {
+      const visibleKeys = new Set(weeks.map((week) => week.weekKey));
+      return current.filter((key) => visibleKeys.has(key));
+    });
+  }, [weeks]);
+
+  useEffect(() => {
+    setSelectedRunIds((current) => current.filter((id) => runs.some((run) => run.id === id)));
+  }, [runs]);
+
+  useEffect(() => {
+    if (!filteredRaidNights.length) {
+      setSelectedNightKey(null);
+      return;
+    }
+
+    setSelectedNightKey((current) => (current && filteredRaidNights.some((night) => night.key === current) ? current : filteredRaidNights[0].key));
+  }, [filteredRaidNights]);
+
+  useEffect(() => {
+    if (!selectedEncounterKey) return;
+    if (!filteredEncounterSummaries.some((encounter) => encounter.encounterKey === selectedEncounterKey)) {
+      setSelectedEncounterKey(null);
+    }
+  }, [filteredEncounterSummaries, selectedEncounterKey]);
+
+  useEffect(() => {
+    if (!selectedEncounterKey) return;
+
+    const encounter = encounterSummaries.find((entry) => entry.encounterKey === selectedEncounterKey);
+    if (!encounter) return;
+
+    const runsToFetch = [...encounter.runsList]
+      .filter((run) => !hasCurrentPhaseData(run.phaseData) && run.raw.encounter?.jsonAvailable !== false)
+      .sort((left, right) => right.start - left.start);
+
+    if (!runsToFetch.length) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      for (const run of runsToFetch) {
+        if (cancelled) return;
+
+        setPhaseLoadByRunId((current) => ({ ...current, [run.id]: true }));
+
+        try {
+          const phaseData = await fetchEncounterPhaseData(run.permalink);
+          const updatedRun: RunRecord = {
+            ...run,
+            phaseData,
+            updatedAt: new Date().toISOString(),
+          };
+
+          await saveRunRecord(updatedRun);
+          if (cancelled) return;
+
+          setRuns((current) => current.map((existing) => (existing.id === run.id ? updatedRun : existing)));
+          setPhaseErrorByRunId((current) => {
+            if (!(run.id in current)) return current;
+            const next = { ...current };
+            delete next[run.id];
+            return next;
+          });
+        } catch (err) {
+          if (cancelled) return;
+          setPhaseErrorByRunId((current) => ({
+            ...current,
+            [run.id]: err instanceof Error ? err.message : "Could not load phase data.",
+          }));
+        } finally {
+          if (cancelled) return;
+          setPhaseLoadByRunId((current) => {
+            if (!(run.id in current)) return current;
+            const next = { ...current };
+            delete next[run.id];
+            return next;
+          });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEncounterKey]);
+
+  const selectedEncounterPhaseStatus = useMemo(() => {
+    if (!selectedEncounter) return null;
+
+    const fetchableRuns = selectedEncounter.runsList.filter((run) => run.raw.encounter?.jsonAvailable !== false);
+    return {
+      fetchableRuns: fetchableRuns.length,
+      cachedRuns: fetchableRuns.filter((run) => hasCurrentPhaseData(run.phaseData)).length,
+      loadingRuns: fetchableRuns.filter((run) => phaseLoadByRunId[run.id]).length,
+      failedRuns: fetchableRuns.filter((run) => phaseErrorByRunId[run.id]).length,
+    };
+  }, [phaseErrorByRunId, phaseLoadByRunId, selectedEncounter]);
+
+  async function loadRuns() {
+    if (!isRunHistorySupported()) {
+      setStatus("IndexedDB is not available in this browser.");
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      setRuns(await getAllRunRecords());
+      setStatus("");
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Could not load run history.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function exportBackup() {
+    setIsWorking(true);
+    try {
+      const backup = await exportRunHistoryBackup();
+      const json = JSON.stringify(backup, null, 2);
+      downloadBlob(new Blob([json], { type: "application/json" }), `gw2-run-history-${backup.exportedAt.slice(0, 10)}.json`);
+      setStatus(`Exported ${backup.runs.length} run${backup.runs.length === 1 ? "" : "s"}.`);
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Could not export backup.");
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
+  function exportFilteredJson() {
+    const exportedAt = new Date().toISOString();
+    const json = JSON.stringify({ exportedAt, filters, runs: sortedRuns }, null, 2);
+    downloadBlob(new Blob([json], { type: "application/json" }), `gw2-run-history-filtered-${exportedAt.slice(0, 10)}.json`);
+    setStatus(`Exported ${sortedRuns.length} filtered run${sortedRuns.length === 1 ? "" : "s"}.`);
+  }
+
+  function exportFilteredCsv() {
+    downloadBlob(new Blob([runsToCsv(sortedRuns)], { type: "text/csv" }), `gw2-run-history-filtered-${new Date().toISOString().slice(0, 10)}.csv`);
+    setStatus(`Exported ${sortedRuns.length} filtered run${sortedRuns.length === 1 ? "" : "s"}.`);
+  }
+
+  async function importBackup(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setIsWorking(true);
+    try {
+      const parsed = JSON.parse(await file.text()) as unknown;
+      const result = await importRunHistoryBackup(parsed, importMode);
+      await loadRuns();
+      setStatus(
+        importMode === "replace"
+          ? `Restored ${result.saved} run${result.saved === 1 ? "" : "s"}.`
+          : `Imported ${result.saved} new and updated ${result.updated} existing run${result.updated === 1 ? "" : "s"}.`,
+      );
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Could not import backup.");
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
+  async function deleteRun(id: string) {
+    await deleteRuns([id], "Deleted run.");
+  }
+
+  async function deleteSelectedRuns() {
+    if (!selectedRunIds.length || !window.confirm(`Delete ${selectedRunIds.length} selected run${selectedRunIds.length === 1 ? "" : "s"}?`)) return;
+    await deleteRuns(selectedRunIds, `Deleted ${selectedRunIds.length} selected run${selectedRunIds.length === 1 ? "" : "s"}.`);
+  }
+
+  async function deleteWeek(weekKey: string) {
+    const ids = runs.filter((run) => run.weekKey === weekKey).map((run) => run.id);
+    if (!ids.length || !window.confirm(`Delete all ${ids.length} run${ids.length === 1 ? "" : "s"} from ${weekKey}?`)) return;
+    await deleteRuns(ids, `Deleted ${weekKey}.`);
+  }
+
+  async function deleteRuns(ids: string[], successMessage: string) {
+    setIsWorking(true);
+    try {
+      await Promise.all(ids.map((id) => deleteRunRecord(id)));
+      setSelectedRunIds((current) => current.filter((id) => !ids.includes(id)));
+      await loadRuns();
+      setStatus(successMessage);
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Could not delete run history.");
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
+  async function clearHistory() {
+    if (!window.confirm("Delete all saved run history from this browser?")) return;
+
+    setIsWorking(true);
+    try {
+      await clearRunHistory();
+      await loadRuns();
+      setSelectedRunIds([]);
+      setStatus("Cleared run history.");
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Could not clear run history.");
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
+  function toggleVisibleSelection() {
+    const visibleIds = sortedRuns.map((run) => run.id);
+    setSelectedRunIds((current) =>
+      allVisibleSelected ? current.filter((id) => !visibleIds.includes(id)) : Array.from(new Set([...current, ...visibleIds])),
+    );
+  }
+
+  function toggleRunSelection(id: string) {
+    setSelectedRunIds((current) => (current.includes(id) ? current.filter((selectedId) => selectedId !== id) : [...current, id]));
+  }
+
+  function renderActiveView() {
+    switch (view) {
+      case "dashboard":
+        return (
+          <DashboardTab
+            sessionTypeFilter={filters.sessionTypeFilter}
+            isWorking={isWorking}
+            latestNight={latestNight}
+            previousNight={previousNight}
+            wingSummaries={wingSummaries}
+            raidNights={raidNights}
+            records={records}
+            onImportBackup={importBackup}
+            onViewHistory={() => setView("runs")}
+          />
+        );
+      case "runs":
+        return (
+          <RunsTab
+            filters={filters}
+            filterActions={filterActions}
+            weekOptions={weekOptions}
+            wingOptions={wingOptions}
+            filteredRaidNights={filteredRaidNights}
+            selectedNight={selectedNight}
+            sortedRuns={sortedRuns}
+            selectedRunIds={selectedRunIds}
+            isWorking={isWorking}
+            allVisibleSelected={allVisibleSelected}
+            onSelectNight={setSelectedNightKey}
+            onToggleVisibleSelection={toggleVisibleSelection}
+            onDeleteSelected={() => void deleteSelectedRuns()}
+            onToggleRunSelection={toggleRunSelection}
+            onSelectEncounter={(run) => {
+              setSelectedEncounterKey(run.encounterKey);
+              setView("encounters");
+            }}
+            onDeleteRun={(run) => void deleteRun(run.id)}
+            onExportCsv={exportFilteredCsv}
+            onExportJson={exportFilteredJson}
+          />
+        );
+      case "weeks":
+        return (
+          <WeeksTab
+            weeks={weeks}
+            expandedWeekKeys={expandedWeekKeys}
+            filteredRuns={filteredRuns}
+            onToggleWeek={(weekKey) =>
+              setExpandedWeekKeys((current) => (current.includes(weekKey) ? current.filter((key) => key !== weekKey) : [...current, weekKey]))
+            }
+            onDeleteWeek={(weekKey) => void deleteWeek(weekKey)}
+            onSelectEncounter={(encounterKey) => {
+              setSelectedEncounterKey(encounterKey);
+              setView("encounters");
+            }}
+          />
+        );
+      case "wings":
+        return <WingsTab wingSummaries={wingSummaries} />;
+      case "encounters":
+        return (
+          <EncountersTab
+            filters={filters}
+            filterActions={filterActions}
+            weekOptions={weekOptions}
+            wingOptions={wingOptions}
+            selectedEncounter={selectedEncounter}
+            selectedEncounterPhaseStatus={selectedEncounterPhaseStatus}
+            filteredEncounterSummaries={filteredEncounterSummaries}
+            onSelectRun={(run) => setSelectedRunIds((current) => Array.from(new Set([...current, run.id])))}
+            onSelectEncounter={setSelectedEncounterKey}
+          />
+        );
+      case "downtime":
+        return <DowntimeTab night={selectedNight} previousNight={previousNight} />;
+    }
+  }
+
+  return (
+    <section className="run-history-shell">
+      <aside className="history-sidebar panel">
+        {(["Primary", "Analysis"] as const).map((group) => (
+          <div className="history-nav-group" key={group}>
+            <span className="eyebrow">{group}</span>
+            {HISTORY_VIEWS.filter((item) => item.group === group).map((item) => (
+              <button type="button" className={view === item.id ? "active" : ""} onClick={() => setView(item.id)} key={item.id}>
+                {item.label}
+              </button>
+            ))}
+          </div>
+        ))}
+
+        <label className="field compact history-session-scope">
+          <span>Metric scope</span>
+          <select value={filters.sessionTypeFilter} onChange={(event) => filterActions.setSessionTypeFilter(event.target.value as SessionTypeFilter)}>
+            <option value="full-clear">Full clear only</option>
+            <option value="practice">Practice only</option>
+            <option value="all">All sessions</option>
+          </select>
+        </label>
+
+        <details className="history-sidebar-management">
+          <summary>Manage history</summary>
+          <label className="field compact">
+            <span>Import mode</span>
+            <select value={importMode} disabled={isWorking} onChange={(event) => setImportMode(event.target.value as ImportMode)}>
+              <option value="merge">Merge</option>
+              <option value="replace">Replace</option>
+            </select>
+          </label>
+          <div className="history-sidebar-actions">
+            <button type="button" className="secondary" disabled={!hasRuns || isWorking} onClick={exportBackup}>
+              Export backup
+            </button>
+            <label className={`secondary file-button ${isWorking ? "disabled" : ""}`}>
+              Import backup
+              <input type="file" accept="application/json,.json" disabled={isWorking} onChange={importBackup} />
+            </label>
+            <button type="button" className="ghost" disabled={!hasRuns || isWorking} onClick={clearHistory}>
+              Clear all
+            </button>
+          </div>
+        </details>
+      </aside>
+
+      <div className="history-view">
+        {status ? <p className="status-text">{status}</p> : null}
+        {isLoading ? <div className="panel"><p className="muted">Loading run history...</p></div> : null}
+        {!isLoading && !hasRuns ? <div className="panel"><p className="muted">No saved runs yet. Load reports in the session timer, then save them here.</p></div> : null}
+        {!isLoading && hasRuns ? renderActiveView() : null}
+      </div>
+    </section>
+  );
+}

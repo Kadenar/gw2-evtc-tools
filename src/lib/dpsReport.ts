@@ -1,6 +1,7 @@
 import { getEncounterName, getEncounterWing } from "../data/encounters";
 
 export type DpsReportDomain = "https://dps.report" | "https://b.dps.report";
+export const ENCOUNTER_PHASE_DATA_VERSION = 2;
 
 export type DpsReportMetadata = {
   id?: string;
@@ -25,6 +26,27 @@ export type DpsReportMetadata = {
     version?: string;
     bossId?: number;
   };
+};
+
+export type EncounterPhaseMetric = {
+  key: string;
+  name: string;
+  phaseType: string | null;
+  startMs: number;
+  endMs: number;
+  durationSeconds: number;
+  targetIds: number[];
+  targetNames: string[];
+  squadDps: number | null;
+  squadDamage: number | null;
+  squadTargetDps: number | null;
+  squadTargetDamage: number | null;
+};
+
+export type EncounterPhaseData = {
+  version: number;
+  fetchedAt: string;
+  phases: EncounterPhaseMetric[];
 };
 
 export type SessionLog = {
@@ -65,6 +87,41 @@ export type SessionSummary = {
 };
 
 const RAID_WINGS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+
+type DpsReportJsonTarget = {
+  id?: number;
+  name?: string;
+};
+
+type DpsReportJsonPhase = {
+  start?: number;
+  end?: number;
+  name?: string;
+  phaseType?: string;
+  breakbarPhase?: boolean;
+  targets?: number[];
+  targetPriorities?: Record<string, string>;
+  subPhases?: number[];
+};
+
+type DpsReportJsonDpsStat = {
+  dps?: number;
+  damage?: number;
+};
+
+type DpsReportJsonPlayer = {
+  firstAware?: number;
+  lastAware?: number;
+  dpsAll?: Array<DpsReportJsonDpsStat | null>;
+  dpsTargets?: Array<Array<DpsReportJsonDpsStat | null> | null>;
+};
+
+type DpsReportEncounterJson = {
+  error?: string | null;
+  phases?: DpsReportJsonPhase[];
+  players?: DpsReportJsonPlayer[];
+  targets?: DpsReportJsonTarget[];
+};
 
 function parseDurationSeconds(value: unknown): number {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -120,6 +177,21 @@ export async function fetchUploadMetadata(permalink: string): Promise<DpsReportM
   }
 
   return json;
+}
+
+export async function fetchEncounterPhaseData(permalink: string): Promise<EncounterPhaseData> {
+  const domain = getMetadataDomain(permalink);
+  const url = new URL("/getJson", domain);
+  url.searchParams.set("permalink", permalink);
+
+  const response = await fetch(url.toString(), { method: "GET" });
+  const json = (await response.json()) as DpsReportEncounterJson;
+
+  if (!response.ok || json.error) {
+    throw new Error(json.error || `dps.report returned HTTP ${response.status}`);
+  }
+
+  return buildEncounterPhaseData(json);
 }
 
 export async function uploadLogToDpsReport(
@@ -245,4 +317,189 @@ export function logsToCsv(logs: SessionLog[]): string {
   return [header, ...rows]
     .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
     .join("\n");
+}
+
+function buildEncounterPhaseData(report: DpsReportEncounterJson): EncounterPhaseData {
+  const phases = Array.isArray(report.phases) ? report.phases : [];
+  const players = Array.isArray(report.players) ? report.players : [];
+  const targets = Array.isArray(report.targets) ? report.targets : [];
+  const keyPhases = getKeyPhases(phases);
+
+  return {
+    version: ENCOUNTER_PHASE_DATA_VERSION,
+    fetchedAt: new Date().toISOString(),
+    phases: keyPhases.map(({ phase, phaseIndex }) => {
+      const name = readNonEmptyString(phase.name) ?? `Phase ${phaseIndex + 1}`;
+      const startMs = readFiniteNumber(phase.start) ?? 0;
+      const endMs = Math.max(startMs, readFiniteNumber(phase.end) ?? startMs);
+      const durationSeconds = Math.max(0, endMs - startMs) / 1000;
+      const targetIndexes = getPhaseTargetIndexes(phase);
+      const mainTargetIndexes = getMainTargetIndexes(phase, targetIndexes);
+      const activePlayers = players.filter((player) => isPlayerActiveForPhase(player, startMs, endMs));
+
+      return {
+        key: `${phase.phaseType ?? "phase"}:${name}`,
+        name,
+        phaseType: readNonEmptyString(phase.phaseType) ?? null,
+        startMs,
+        endMs,
+        durationSeconds,
+        targetIds: targetIndexes.map((targetIndex) => readFiniteNumber(targets[targetIndex]?.id) ?? targetIndex).filter(Number.isFinite),
+        targetNames: getTargetNames(targetIndexes, targets),
+        squadDps: sumDpsStat(activePlayers, phaseIndex, "dpsAll", "dps"),
+        squadDamage: sumDpsStat(activePlayers, phaseIndex, "dpsAll", "damage"),
+        squadTargetDps: sumTargetDpsStat(activePlayers, mainTargetIndexes, phaseIndex, "dps"),
+        squadTargetDamage: sumTargetDpsStat(activePlayers, mainTargetIndexes, phaseIndex, "damage"),
+      };
+    }),
+  };
+}
+
+function getKeyPhases(phases: DpsReportJsonPhase[]): Array<{ phase: DpsReportJsonPhase; phaseIndex: number }> {
+  const indexedPhases = phases.map((phase, phaseIndex) => ({ phase, phaseIndex }));
+  const encounterPhases = indexedPhases.filter(({ phase }) => isEncounterPhase(phase));
+
+  if (encounterPhases.length) {
+    const directChildren = encounterPhases.flatMap(({ phase }) =>
+      (Array.isArray(phase.subPhases) ? phase.subPhases : [])
+        .filter((phaseIndex) => Number.isInteger(phaseIndex) && phaseIndex >= 0 && phaseIndex < indexedPhases.length)
+        .map((phaseIndex) => indexedPhases[phaseIndex]),
+    );
+
+    const keyPhases = dedupePhases([...encounterPhases, ...directChildren]).filter(({ phase }) => isKeyPhase(phase));
+    if (keyPhases.length) {
+      return keyPhases;
+    }
+  }
+
+  return indexedPhases.filter(({ phase }) => isKeyPhase(phase));
+}
+
+function dedupePhases(phases: Array<{ phase: DpsReportJsonPhase; phaseIndex: number }>): Array<{ phase: DpsReportJsonPhase; phaseIndex: number }> {
+  const seen = new Set<number>();
+  return phases.filter(({ phaseIndex }) => {
+    if (seen.has(phaseIndex)) return false;
+    seen.add(phaseIndex);
+    return true;
+  });
+}
+
+function isEncounterPhase(phase: DpsReportJsonPhase): boolean {
+  return phase.phaseType === "Encounter" || readNonEmptyString(phase.name) === "Full Fight";
+}
+
+function isKeyPhase(phase: DpsReportJsonPhase): boolean {
+  if (isBreakbarPhase(phase)) return false;
+  if (phase.phaseType === "TimeFrame") return false;
+  return phase.phaseType === "Encounter" || phase.phaseType === "SubPhase" || phase.phaseType == null;
+}
+
+function isBreakbarPhase(phase: DpsReportJsonPhase): boolean {
+  if (phase.breakbarPhase === true) return true;
+  const name = readNonEmptyString(phase.name);
+  return name != null && /breakbar/i.test(name);
+}
+
+function getPhaseTargetIndexes(phase: DpsReportJsonPhase): number[] {
+  const indexes = new Set<number>();
+
+  if (Array.isArray(phase.targets)) {
+    for (const targetIndex of phase.targets) {
+      if (Number.isInteger(targetIndex) && targetIndex >= 0) {
+        indexes.add(targetIndex);
+      }
+    }
+  }
+
+  if (phase.targetPriorities && isRecord(phase.targetPriorities)) {
+    for (const key of Object.keys(phase.targetPriorities)) {
+      const parsed = Number(key);
+      if (Number.isInteger(parsed) && parsed >= 0) {
+        indexes.add(parsed);
+      }
+    }
+  }
+
+  return Array.from(indexes).sort((left, right) => left - right);
+}
+
+function getMainTargetIndexes(phase: DpsReportJsonPhase, fallback: number[]): number[] {
+  if (!phase.targetPriorities || !isRecord(phase.targetPriorities)) {
+    return fallback;
+  }
+
+  const mainTargets = Object.entries(phase.targetPriorities)
+    .filter((entry) => entry[1].toUpperCase() === "MAIN")
+    .map((entry) => Number(entry[0]))
+    .filter((targetIndex) => Number.isInteger(targetIndex) && targetIndex >= 0);
+
+  return mainTargets.length ? mainTargets : fallback;
+}
+
+function getTargetNames(targetIndexes: number[], targets: DpsReportJsonTarget[]): string[] {
+  const names = targetIndexes
+    .map((targetIndex) => readNonEmptyString(targets[targetIndex]?.name) ?? `Target ${targetIndex + 1}`)
+    .filter((name, index, values) => values.indexOf(name) === index);
+
+  return names;
+}
+
+function isPlayerActiveForPhase(player: DpsReportJsonPlayer, startMs: number, endMs: number): boolean {
+  const firstAware = readFiniteNumber(player.firstAware) ?? 0;
+  const lastAware = readFiniteNumber(player.lastAware) ?? Number.POSITIVE_INFINITY;
+  return endMs > firstAware && startMs < lastAware;
+}
+
+function sumDpsStat(
+  players: DpsReportJsonPlayer[],
+  phaseIndex: number,
+  key: "dpsAll",
+  stat: keyof DpsReportJsonDpsStat,
+): number | null {
+  let total = 0;
+  let hasValue = false;
+
+  for (const player of players) {
+    const phaseStat = player[key]?.[phaseIndex];
+    const value = readFiniteNumber(phaseStat?.[stat]);
+    if (value == null) continue;
+    total += value;
+    hasValue = true;
+  }
+
+  return hasValue ? total : null;
+}
+
+function sumTargetDpsStat(
+  players: DpsReportJsonPlayer[],
+  targetIndexes: number[],
+  phaseIndex: number,
+  stat: keyof DpsReportJsonDpsStat,
+): number | null {
+  let total = 0;
+  let hasValue = false;
+
+  for (const player of players) {
+    for (const targetIndex of targetIndexes) {
+      const phaseStat = player.dpsTargets?.[targetIndex]?.[phaseIndex];
+      const value = readFiniteNumber(phaseStat?.[stat]);
+      if (value == null) continue;
+      total += value;
+      hasValue = true;
+    }
+  }
+
+  return hasValue ? total : null;
+}
+
+function readFiniteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readNonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function isRecord(value: unknown): value is Record<string, string> {
+  return typeof value === "object" && value != null;
 }

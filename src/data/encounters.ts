@@ -76,6 +76,10 @@ export const KNOWN_ENCOUNTERS: Encounter[] = [
 ];
 
 export const ENCOUNTER_BY_ID = new Map(KNOWN_ENCOUNTERS.map((encounter) => [encounter.id, encounter]));
+const RAID_ENCOUNTER_ORDER_BY_ID = new Map(RAID_ENCOUNTERS.map((encounter, index) => [encounter.id, index]));
+const RAID_ENCOUNTER_ORDER_BY_NAME = new Map(
+  RAID_ENCOUNTERS.map((encounter, index) => [normalizeEncounterName(encounter.name), index]),
+);
 
 export function getEncounterName(id: number | null | undefined): string {
   if (!id) return "Unknown";
@@ -85,4 +89,22 @@ export function getEncounterName(id: number | null | undefined): string {
 export function getEncounterWing(id: number | null | undefined): number | null {
   if (!id) return null;
   return ENCOUNTER_BY_ID.get(id)?.wing ?? null;
+}
+
+export function getEncounterSortOrder(id: number | null | undefined, name?: string | null): number {
+  if (id != null) {
+    const orderById = RAID_ENCOUNTER_ORDER_BY_ID.get(id);
+    if (orderById != null) return orderById;
+  }
+
+  if (name) {
+    const orderByName = RAID_ENCOUNTER_ORDER_BY_NAME.get(normalizeEncounterName(name));
+    if (orderByName != null) return orderByName;
+  }
+
+  return Number.POSITIVE_INFINITY;
+}
+
+function normalizeEncounterName(name: string): string {
+  return name.trim().toLowerCase();
 }
