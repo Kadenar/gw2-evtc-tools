@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getEncounterSortOrder } from "../../data/encounters";
 import { formatSeconds } from "../../lib/format";
 import { cx, panelClass, sectionHeadingClass, tableWrapClass } from "../../lib/ui";
+import { EmptyCard } from "../ui/empty-card";
 import { hasCurrentPhaseData, type RunRecord } from "../../lib/runHistory";
 import type { EncounterSummary, HistoryFilterActions, HistoryFilters } from "./types";
 import { average, formatDps, formatPercent, formatPullTickDate, formatResult, formatRunDate, formatWing, getResultClass } from "./utils";
@@ -51,9 +52,7 @@ export function EncountersTab({
         />
       ) : (
         <div className={panelClass}>
-          <p className="muted">
-            Select an encounter from the list below to view its pull history.
-          </p>
+          <EmptyCard title="No encounter selected" description="Choose an encounter from the list below to inspect pull history, timings, and cached phase data." />
         </div>
       )}
       <EncounterListPanel encounters={filteredEncounterSummaries} selectedEncounterKey={selectedEncounter?.encounterKey ?? null} onSelectEncounter={onSelectEncounter} />
@@ -139,7 +138,7 @@ function EncounterListPanel({
         ))}
         </div>
       ) : (
-        <p className="muted">No encounters match the current filters.</p>
+        <EmptyCard title="No encounters match" description="The current filters removed every encounter from the list." />
       )}
     </div>
   );

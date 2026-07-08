@@ -1,5 +1,6 @@
 import type { RunRecord } from "../../lib/runHistory";
 import { inlineActionsClass, panelClass, sectionHeadingClass } from "../../lib/ui";
+import { EmptyCard } from "../ui/empty-card";
 import type { HistoryFilterActions, HistoryFilters } from "./types";
 import { HistoryFilterPanel, RunCard } from "./shared";
 
@@ -74,7 +75,7 @@ export function ManageRunsTab({
             ))}
           </div>
         ) : (
-          <p className="muted">No runs match the current filters.</p>
+          <EmptyCard title="No runs match" description="Adjust the filters or save more runs to manage individual pulls here." />
         )}
       </div>
     </>

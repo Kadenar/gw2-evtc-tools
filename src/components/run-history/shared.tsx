@@ -10,6 +10,7 @@ import {
   sectionHeadingClass,
   summaryCardClass,
 } from "../../lib/ui";
+import { ProjectSelect, type ProjectSelectOption } from "../ui/project-select";
 import type { HistoryFilterActions, HistoryFilters, RaidNightSummary, ResultFilter, SessionTypeFilter, SortMode } from "./types";
 import {
   buildTimelineRows,
@@ -43,6 +44,38 @@ export function HistoryFilterPanel({
 }) {
   const { query, weekFilter, wingFilter, resultFilter, cmFilter, sessionTypeFilter, sortMode } = filters;
   const fieldClasses = cx(fieldClass, compactFieldClass);
+  const weekFilterOptions: ProjectSelectOption[] = [
+    { value: "all", label: "All weeks" },
+    ...weekOptions.map((weekKey) => ({ value: weekKey, label: weekKey })),
+  ];
+  const wingFilterOptions: ProjectSelectOption[] = [
+    { value: "all", label: "All wings" },
+    { value: "unmapped", label: "Unmapped" },
+    ...wingOptions.map((wing) => ({ value: String(wing), label: `Wing ${wing}` })),
+  ];
+  const resultFilterOptions: ProjectSelectOption[] = [
+    { value: "all", label: "All results" },
+    { value: "kill", label: "Kills" },
+    { value: "wipe", label: "Wipes" },
+    { value: "unknown", label: "Unknown" },
+  ];
+  const cmFilterOptions: ProjectSelectOption[] = [
+    { value: "all", label: "CM and normal" },
+    { value: "cm", label: "CM only" },
+    { value: "normal", label: "Normal only" },
+  ];
+  const sessionFilterOptions: ProjectSelectOption[] = [
+    { value: "all", label: "All sessions" },
+    { value: "full-clear", label: "Full clear" },
+    { value: "practice", label: "Practice" },
+  ];
+  const sortOptions: ProjectSelectOption[] = [
+    { value: "newest", label: "Newest first" },
+    { value: "oldest", label: "Oldest first" },
+    { value: "duration", label: "Fastest duration" },
+    { value: "dps", label: "Highest DPS" },
+    { value: "encounter", label: "Encounter" },
+  ];
 
   return (
     <div className={panelClass}>
@@ -62,63 +95,37 @@ export function HistoryFilterPanel({
         {showWeekFilter ? (
           <label className={fieldClasses}>
             <span className="text-muted">Week</span>
-            <select value={weekFilter} onChange={(event) => filterActions.setWeekFilter(event.target.value)}>
-              <option value="all">All weeks</option>
-              {weekOptions.map((weekKey) => (
-                <option value={weekKey} key={weekKey}>
-                  {weekKey}
-                </option>
-              ))}
-            </select>
+            <ProjectSelect value={weekFilter} onValueChange={filterActions.setWeekFilter} options={weekFilterOptions} />
           </label>
         ) : null}
         <label className={fieldClasses}>
           <span className="text-muted">Wing</span>
-          <select value={wingFilter} onChange={(event) => filterActions.setWingFilter(event.target.value)}>
-            <option value="all">All wings</option>
-            <option value="unmapped">Unmapped</option>
-            {wingOptions.map((wing) => (
-              <option value={String(wing)} key={wing}>
-                Wing {wing}
-              </option>
-            ))}
-          </select>
+          <ProjectSelect value={wingFilter} onValueChange={filterActions.setWingFilter} options={wingFilterOptions} />
         </label>
         <label className={fieldClasses}>
           <span className="text-muted">Result</span>
-          <select value={resultFilter} onChange={(event) => filterActions.setResultFilter(event.target.value as ResultFilter)}>
-            <option value="all">All results</option>
-            <option value="kill">Kills</option>
-            <option value="wipe">Wipes</option>
-            <option value="unknown">Unknown</option>
-          </select>
+          <ProjectSelect value={resultFilter} onValueChange={(value) => filterActions.setResultFilter(value as ResultFilter)} options={resultFilterOptions} />
         </label>
         <label className={fieldClasses}>
           <span className="text-muted">Mode</span>
-          <select value={cmFilter} onChange={(event) => filterActions.setCmFilter(event.target.value as HistoryFilters["cmFilter"])}>
-            <option value="all">CM and normal</option>
-            <option value="cm">CM only</option>
-            <option value="normal">Normal only</option>
-          </select>
+          <ProjectSelect
+            value={cmFilter}
+            onValueChange={(value) => filterActions.setCmFilter(value as HistoryFilters["cmFilter"])}
+            options={cmFilterOptions}
+          />
         </label>
         <label className={fieldClasses}>
           <span className="text-muted">Session</span>
-          <select value={sessionTypeFilter} onChange={(event) => filterActions.setSessionTypeFilter(event.target.value as SessionTypeFilter)}>
-            <option value="all">All sessions</option>
-            <option value="full-clear">Full clear</option>
-            <option value="practice">Practice</option>
-          </select>
+          <ProjectSelect
+            value={sessionTypeFilter}
+            onValueChange={(value) => filterActions.setSessionTypeFilter(value as SessionTypeFilter)}
+            options={sessionFilterOptions}
+          />
         </label>
         {showSortFilter ? (
           <label className={fieldClasses}>
             <span className="text-muted">Sort</span>
-            <select value={sortMode} onChange={(event) => filterActions.setSortMode(event.target.value as SortMode)}>
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="duration">Fastest duration</option>
-              <option value="dps">Highest DPS</option>
-              <option value="encounter">Encounter</option>
-            </select>
+            <ProjectSelect value={sortMode} onValueChange={(value) => filterActions.setSortMode(value as SortMode)} options={sortOptions} />
           </label>
         ) : null}
       </div>

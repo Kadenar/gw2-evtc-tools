@@ -1,4 +1,7 @@
 import { useMemo, useState } from "react";
+import { EmptyCard } from "./ui/empty-card";
+import { FileDropzone } from "./ui/file-dropzone";
+import { ProjectSelect } from "./ui/project-select";
 import {
   DpsReportDomain,
   SessionLog,
@@ -45,6 +48,16 @@ type TimelineRow = {
   items: TimelineItem[];
   transitionAfter?: Extract<TimelineItem, { type: "gap" }>;
 };
+
+const UPLOAD_DOMAIN_OPTIONS = [
+  { value: "https://dps.report", label: "https://dps.report" },
+  { value: "https://b.dps.report", label: "https://b.dps.report" },
+] satisfies Array<{ value: DpsReportDomain; label: string }>;
+
+const RUN_SESSION_TYPE_OPTIONS = [
+  { value: "full-clear", label: "Full clear" },
+  { value: "practice", label: "Practice" },
+] satisfies Array<{ value: RunSessionType; label: string }>;
 
 export function SessionTimer() {
   const [uploadDomain, setUploadDomain] = useState<DpsReportDomain>("https://dps.report");
@@ -179,21 +192,18 @@ export function SessionTimer() {
           <h3 className="mb-3 mt-0 text-[1.25rem]">Or upload logs</h3>
           <label className={cx(fieldClass, "mx-0 mt-0 mb-3 max-w-60")}>
             <span className="text-muted">Upload domain</span>
-            <select value={uploadDomain} onChange={(event) => setUploadDomain(event.target.value as DpsReportDomain)}>
-              <option value="https://dps.report">https://dps.report</option>
-              <option value="https://b.dps.report">https://b.dps.report</option>
-            </select>
+            <ProjectSelect value={uploadDomain} onValueChange={(value) => setUploadDomain(value as DpsReportDomain)} options={UPLOAD_DOMAIN_OPTIONS} />
           </label>
-          <label className="dropzone mt-0 min-h-22">
-            <input
-              type="file"
-              multiple
-              accept=".evtc,.zevtc,.zip,application/zip,application/octet-stream"
-              onChange={(event) => setUploadFiles(Array.from(event.target.files ?? []))}
-            />
-            <span>Choose EVTC/ZEVTC logs</span>
-            <small>{uploadFiles.length ? `${uploadFiles.length} file(s) selected` : "Uploaded from your browser to dps.report"}</small>
-          </label>
+          <FileDropzone
+            className="min-h-35"
+            title="Choose EVTC/ZEVTC logs"
+            description="Logs upload directly from your browser to dps.report."
+            hint="Drop one or more files here, or click to pick them."
+            accept=".evtc,.zevtc,.zip,application/zip,application/octet-stream"
+            multiple
+            files={uploadFiles}
+            onFilesChange={setUploadFiles}
+          />
           <label className="my-[0.8rem] flex items-center gap-[0.55rem] text-muted">
             <input className="w-auto" type="checkbox" checked={anonymous} onChange={(event) => setAnonymous(event.target.checked)} />
             <span>Upload anonymously</span>
@@ -220,10 +230,14 @@ export function SessionTimer() {
           <div className={cx(inlineActionsClass, "items-center")}>
             <label className={cx(fieldClass, compactFieldClass, "m-0 flex max-w-none items-center gap-[0.6rem]")}>
               <span className="whitespace-nowrap text-muted">History type</span>
-              <select value={runSessionType} disabled={isWorking} onChange={(event) => setRunSessionType(event.target.value as RunSessionType)}>
-                <option value="full-clear">Full clear</option>
-                <option value="practice">Practice</option>
-              </select>
+              <ProjectSelect
+                value={runSessionType}
+                disabled={isWorking}
+                onValueChange={(value) => setRunSessionType(value as RunSessionType)}
+                options={RUN_SESSION_TYPE_OPTIONS}
+                size="sm"
+                triggerClassName="min-w-42"
+              />
             </label>
             <button type="button" className="btn" disabled={!logs.length} onClick={exportCsv}>
               Export CSV
@@ -304,7 +318,7 @@ export function SessionTimer() {
           </div>
         </div>
 
-        {!summary.logs.length ? <p className="muted">No logs loaded yet.</p> : null}
+        {!summary.logs.length ? <EmptyCard title="No logs loaded yet" description="Fetch dps.report links or upload EVTC files to generate a session breakdown." /> : null}
         {summary.logs.length > 0 && breakdownView === "timeline" ? <TimelineView items={timelineItems} /> : null}
         {summary.logs.length > 0 && breakdownView === "details" ? <WingDetails logDetailGroups={logDetailGroups} /> : null}
       </div>
@@ -314,7 +328,7 @@ export function SessionTimer() {
 
 function TimelineView({ items }: { items: TimelineItem[] }) {
   if (!items.length) {
-    return <p className="muted">No logs with usable encounter times were loaded.</p>;
+    return <EmptyCard title="No usable encounter times" description="The loaded logs do not include enough timing data to build a timeline view." />;
   }
 
   const firstPull = items.find((item): item is Extract<TimelineItem, { type: "pull" }> => item.type === "pull");

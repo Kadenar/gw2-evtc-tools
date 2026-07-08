@@ -23,6 +23,8 @@ import { ManageRunsTab } from "./run-history/ManageRunsTab";
 import { RunsTab } from "./run-history/RunsTab";
 import { WeeksTab } from "./run-history/WeeksTab";
 import { WingsTab } from "./run-history/WingsTab";
+import { EmptyCard } from "./ui/empty-card";
+import { ProjectSelect } from "./ui/project-select";
 import type { HistoryView, SessionTypeFilter } from "./run-history/types";
 import { useRunHistoryFilters } from "./run-history/useRunHistoryFilters";
 import {
@@ -39,6 +41,17 @@ const HISTORY_VIEWS: Array<{ id: HistoryView; label: string; group: "Primary" | 
   { id: "encounters", label: "Encounters", group: "Analysis" },
   { id: "downtime", label: "Downtime", group: "Analysis" },
 ];
+
+const HISTORY_SCOPE_OPTIONS = [
+  { value: "full-clear", label: "Full clear only" },
+  { value: "practice", label: "Practice only" },
+  { value: "all", label: "All sessions" },
+] satisfies Array<{ value: SessionTypeFilter; label: string }>;
+
+const IMPORT_MODE_OPTIONS = [
+  { value: "merge", label: "Merge" },
+  { value: "replace", label: "Replace" },
+] satisfies Array<{ value: ImportMode; label: string }>;
 
 export function RunHistory() {
   const bundledRunHistorySource = getSingleBundledRunHistorySource();
@@ -406,11 +419,11 @@ export function RunHistory() {
 
         <label className={cx(fieldClass, compactFieldClass, "m-0 max-w-none")}>
           <span className="text-muted">Metric scope</span>
-          <select value={filters.sessionTypeFilter} onChange={(event) => filterActions.setSessionTypeFilter(event.target.value as SessionTypeFilter)}>
-            <option value="full-clear">Full clear only</option>
-            <option value="practice">Practice only</option>
-            <option value="all">All sessions</option>
-          </select>
+          <ProjectSelect
+            value={filters.sessionTypeFilter}
+            onValueChange={(value) => filterActions.setSessionTypeFilter(value as SessionTypeFilter)}
+            options={HISTORY_SCOPE_OPTIONS}
+          />
         </label>
 
         <details className="border-t border-line pt-[0.85rem]" open={view === "manage" ? true : undefined}>
@@ -428,10 +441,7 @@ export function RunHistory() {
           </div>
           <label className={cx(fieldClass, compactFieldClass, "max-w-none")}>
             <span className="text-muted">Import mode</span>
-            <select value={importMode} disabled={isWorking} onChange={(event) => setImportMode(event.target.value as ImportMode)}>
-              <option value="merge">Merge</option>
-              <option value="replace">Replace</option>
-            </select>
+            <ProjectSelect value={importMode} disabled={isWorking} onValueChange={(value) => setImportMode(value as ImportMode)} options={IMPORT_MODE_OPTIONS} />
           </label>
           <div className="grid items-stretch gap-[0.65rem]">
             <button type="button" className="btn btn-block" disabled={!hasRuns || isWorking} onClick={exportBackup}>
@@ -453,15 +463,20 @@ export function RunHistory() {
         {isLoading ? <div className={panelClass}><p className="muted">Loading run history...</p></div> : null}
         {!isLoading && !hasRuns ? (
           <div className={panelClass}>
-            <p className="muted">No saved runs yet. Load reports in the session timer, then save them here.</p>
-            {bundledRunHistorySource ? (
-              <div className={inlineActionsClass}>
-                <button type="button" className="btn" disabled={isWorking} onClick={() => void importBundledBackup()}>
-                  Load bundled backup
-                </button>
-                <span className="muted">{bundledRunHistorySource.name}</span>
-              </div>
-            ) : null}
+            <EmptyCard
+              title="No saved runs yet"
+              description="Load reports in the session timer, then save them here to unlock dashboards, comparisons, and encounter history."
+              action={
+                bundledRunHistorySource ? (
+                  <div className={inlineActionsClass}>
+                    <button type="button" className="btn" disabled={isWorking} onClick={() => void importBundledBackup()}>
+                      Load bundled backup
+                    </button>
+                    <span className="muted">{bundledRunHistorySource.name}</span>
+                  </div>
+                ) : undefined
+              }
+            />
             {bundledRunHistoryFileCount > 1 ? (
               <p className="muted">Bundled backup import is unavailable because `src/run-data` contains more than one JSON file.</p>
             ) : null}

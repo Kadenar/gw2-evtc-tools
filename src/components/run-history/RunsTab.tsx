@@ -1,5 +1,6 @@
 import { formatSeconds } from "../../lib/format";
 import { cx, panelClass, sectionHeadingClass } from "../../lib/ui";
+import { EmptyCard } from "../ui/empty-card";
 import type { HistoryFilterActions, HistoryFilters, RaidNightSummary } from "./types";
 import { formatRunSessionType, formatWingSet } from "./utils";
 import { HistoryFilterPanel, RaidNightDetail } from "./shared";
@@ -64,7 +65,7 @@ export function RunsTab({
           <div className={sectionHeadingClass}>
             <h3 className="mb-3 mt-0 text-[1.25rem]">Selected raid night{selectedNight ? `: ${selectedNight.label}` : ""}</h3>
           </div>
-          {selectedNight ? <RaidNightDetail night={selectedNight} /> : <p className="muted">No raid night matches the current filters.</p>}
+          {selectedNight ? <RaidNightDetail night={selectedNight} /> : <EmptyCard title="No raid night match" description="The current filters do not leave a saved raid night to inspect." />}
         </div>
       </div>
     </>
