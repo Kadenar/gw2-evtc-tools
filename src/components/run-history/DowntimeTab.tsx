@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { formatSeconds } from "../../lib/format";
+import { compactFieldClass, cx, fieldClass, panelClass, sectionHeadingClass, tableWrapClass } from "../../lib/ui";
 import type { HistoryFilterActions, HistoryFilters, RaidNightSummary } from "./types";
 import { buildTimelineRows } from "./utils";
 import { HistoryFilterPanel } from "./shared";
@@ -44,20 +45,20 @@ export function DowntimeTab({
         wingOptions={wingOptions}
         title="Downtime"
       />
-      <div className="panel">
-        <div className="section-heading">
+      <div className={panelClass}>
+        <div className={sectionHeadingClass}>
           <div>
-            <h3>Downtime segments</h3>
+            <h3 className="mb-3 mt-0 text-[1.25rem]">Downtime segments</h3>
           </div>
-          <label className="field compact">
-            <span>Sort by</span>
+          <label className={cx(fieldClass, compactFieldClass, "m-0")}>
+            <span className="text-muted">Sort by</span>
             <select value={sortMode} onChange={(event) => setSortMode(event.target.value as DowntimeSortMode)}>
               <option value="timeline">Occurs during clear</option>
               <option value="time-lost">Time lost</option>
             </select>
           </label>
         </div>
-        <div className="table-wrap">
+        <div className={tableWrapClass}>
           <table>
             <thead>
               <tr>
@@ -70,7 +71,7 @@ export function DowntimeTab({
             </thead>
             <tbody>
               {rows.map((row, index) => (
-                <tr key={row.id}>
+                <tr className="cursor-pointer hover:bg-primary/8" key={row.id}>
                   <td>{index + 1}</td>
                   <td>{row.label}</td>
                   <td>{formatSeconds(row.offsetSeconds)}</td>

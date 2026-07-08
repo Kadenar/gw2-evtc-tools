@@ -1,5 +1,5 @@
-import type { ChangeEvent } from "react";
 import { formatSeconds } from "../../lib/format";
+import { inlineActionsClass, overviewGridClass, panelClass, sectionHeadingClass, statGridClass } from "../../lib/ui";
 import type { RaidNightSummary, SessionTypeFilter, WingHistorySummary } from "./types";
 import { buildTimelineRows, formatRunSessionType, formatSessionScopeLabel, formatWingSet } from "./utils";
 import { StatCard } from "./shared";
@@ -27,19 +27,19 @@ export function DashboardTab({
 
   return (
     <>
-      <div className="panel">
-        <div className="section-heading">
+      <div className={panelClass}>
+        <div className={sectionHeadingClass}>
           <div>
-            <h3>Dashboard</h3>
+            <h3 className="mb-3 mt-0 text-[1.25rem]">Dashboard</h3>
             <p className="muted">Latest {formatSessionScopeLabel(sessionTypeFilter).toLowerCase()} performance summary.</p>
           </div>
-          <div className="inline-actions">
+          <div className={inlineActionsClass}>
             <button type="button" className="btn btn-sm" onClick={onViewHistory}>
               View history
             </button>
           </div>
         </div>
-        <div className="history-stat-grid">
+        <div className={statGridClass}>
           <StatCard
             label={latestLabel}
             value={latestNight ? formatSeconds(latestNight.totalTime) : "N/A"}
@@ -57,7 +57,7 @@ export function DashboardTab({
 
       <TrendChart title={trendLabel} nights={raidNights.slice(0, 6)} />
 
-      <div className="history-overview-grid">
+      <div className={overviewGridClass}>
         <RecentRaidNights nights={raidNights.slice(0, 4)} />
         <CurrentBreakdown title={breakdownLabel} night={latestNight} />
       </div>
@@ -67,14 +67,14 @@ export function DashboardTab({
 
 function RecentRaidNights({ nights }: { nights: RaidNightSummary[] }) {
   return (
-    <div className="panel recent-runs-panel">
-      <div className="section-heading">
+    <div className={panelClass}>
+      <div className={sectionHeadingClass}>
         <div>
-          <h3>Recent runs</h3>
+          <h3 className="mb-3 mt-0 text-[1.25rem]">Recent runs</h3>
         </div>
       </div>
-      <div className="recent-runs-table">
-        <div className="recent-runs-row recent-runs-head">
+      <div className="grid min-w-170 gap-[0.45rem]">
+        <div className="grid gap-[0.55rem] px-3 pb-0 pt-0 text-[0.82rem] font-extrabold text-muted grid-cols-[minmax(56px,0.65fr)_minmax(160px,1.45fr)_minmax(76px,0.8fr)_minmax(74px,0.8fr)_minmax(52px,0.55fr)_minmax(74px,0.8fr)]">
           <span>Date</span>
           <span>Scope</span>
           <span>Time</span>
@@ -83,15 +83,18 @@ function RecentRaidNights({ nights }: { nights: RaidNightSummary[] }) {
           <span>Downtime</span>
         </div>
         {nights.map((night, index) => (
-          <div className="recent-runs-row" key={night.key}>
-            <span>{night.shortLabel}</span>
-            <strong>
+          <div
+            className="grid min-w-0 gap-[0.55rem] rounded-[0.7rem] border border-line bg-surface px-3 py-[0.65rem] grid-cols-[minmax(56px,0.65fr)_minmax(160px,1.45fr)_minmax(76px,0.8fr)_minmax(74px,0.8fr)_minmax(52px,0.55fr)_minmax(74px,0.8fr)] *:min-w-0 *:wrap-anywhere max-nav:grid-cols-1"
+            key={night.key}
+          >
+            <span className="text-muted">{night.shortLabel}</span>
+            <strong className="text-fg">
               {formatWingSet(night.wings)} {formatRunSessionType(night.sessionType)}
             </strong>
-            <span>{formatSeconds(night.totalTime)}</span>
-            <span>{formatDelta(night.totalTime, nights[index + 1]?.totalTime)}</span>
-            <span>{night.wipes}</span>
-            <span>{formatSeconds(night.downtime)}</span>
+            <span className="text-muted">{formatSeconds(night.totalTime)}</span>
+            <span className="text-muted">{formatDelta(night.totalTime, nights[index + 1]?.totalTime)}</span>
+            <span className="text-muted">{night.wipes}</span>
+            <span className="text-muted">{formatSeconds(night.downtime)}</span>
           </div>
         ))}
       </div>
@@ -109,13 +112,13 @@ function CurrentBreakdown({ title, night }: { title: string; night: RaidNightSum
   const slowestWing = getSlowestWing(night);
 
   return (
-    <div className="panel">
-      <div className="section-heading">
+    <div className={panelClass}>
+      <div className={sectionHeadingClass}>
         <div>
-          <h3>{title}</h3>
+          <h3 className="mb-3 mt-0 text-[1.25rem]">{title}</h3>
         </div>
       </div>
-      <div className="breakdown-list">
+      <div className="grid gap-[0.6rem]">
         <MetricRow label="Total time" value={night ? formatSeconds(total) : "N/A"} />
         <MetricRow label="Combat" value={night ? formatSeconds(combat) : "N/A"} detail={night ? `${combatPercent}%` : ""} />
         <MetricRow label="Downtime" value={night ? formatSeconds(downtime) : "N/A"} detail={night ? `${downtimePercent}%` : ""} />
@@ -123,7 +126,7 @@ function CurrentBreakdown({ title, night }: { title: string; night: RaidNightSum
           <span className="combat" style={{ width: `${combatPercent}%` }} />
           <span className="downtime" style={{ width: `${downtimePercent}%` }} />
         </div>
-        <div className="breakdown-mini-stats">
+        <div className="grid gap-[0.45rem] border-t border-line pt-[0.65rem]">
           <MetricRow label="Wipes" value={night ? String(night.wipes) : "N/A"} />
           <MetricRow label="Longest downtime" value={longestDowntime == null ? "N/A" : formatSeconds(longestDowntime)} />
           <MetricRow label="Slowest wing" value={slowestWing == null ? "N/A" : `Wing ${slowestWing}`} />
@@ -135,10 +138,10 @@ function CurrentBreakdown({ title, night }: { title: string; night: RaidNightSum
 
 function MetricRow({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
-    <div className="breakdown-row">
-      <span>{label}</span>
-      <strong>{value}</strong>
-      {detail ? <small>{detail}</small> : null}
+    <div className="grid min-w-0 items-baseline gap-[0.55rem] grid-cols-[minmax(110px,1fr)_auto_auto]">
+      <span className="text-muted">{label}</span>
+      <strong className="wrap-anywhere">{value}</strong>
+      {detail ? <small className="text-muted">{detail}</small> : null}
     </div>
   );
 }
@@ -164,15 +167,15 @@ function TrendChart({ title, nights }: { title: string; nights: RaidNightSummary
   const line = points.map((point) => `${point.x},${point.y}`).join(" ");
 
   return (
-    <div className="panel">
-      <div className="section-heading">
+    <div className={panelClass}>
+      <div className={sectionHeadingClass}>
         <div>
-          <h3>{title}</h3>
+          <h3 className="mb-3 mt-0 text-[1.25rem]">{title}</h3>
         </div>
       </div>
       {points.length ? (
-        <div className="trend-chart">
-          <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
+        <div className="overflow-x-auto">
+          <svg className="block w-full min-w-130" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
             <line className="trend-axis" x1={padX} y1={padTop} x2={padX} y2={height - padBottom} />
             <line className="trend-axis" x1={padX} y1={height - padBottom} x2={width - 18} y2={height - padBottom} />
             <text className="trend-label" x="4" y={padTop + 4}>
@@ -199,18 +202,32 @@ function TrendChart({ title, nights }: { title: string; nights: RaidNightSummary
   );
 }
 
-function formatDelta(current: number | null | undefined, previous: number | null | undefined): string {
+function formatDeltaLegacy(current: number | null | undefined, previous: number | null | undefined): string {
   if (current == null || previous == null || !Number.isFinite(current) || !Number.isFinite(previous)) return "—";
   const delta = current - previous;
   if (Math.abs(delta) < 1) return "same";
   return `${delta < 0 ? "↓" : "↑"} ${formatSeconds(Math.abs(delta))}`;
 }
 
-function formatCountDelta(current: number | null | undefined, previous: number | null | undefined): string {
+function formatCountDeltaLegacy(current: number | null | undefined, previous: number | null | undefined): string {
   if (current == null || previous == null || !Number.isFinite(current) || !Number.isFinite(previous)) return "—";
   const delta = current - previous;
   if (delta === 0) return "same";
   return `${delta < 0 ? "↓" : "↑"} ${Math.abs(delta)}`;
+}
+
+function formatDelta(current: number | null | undefined, previous: number | null | undefined): string {
+  if (current == null || previous == null || !Number.isFinite(current) || !Number.isFinite(previous)) return "N/A";
+  const delta = current - previous;
+  if (Math.abs(delta) < 1) return "same";
+  return `${delta < 0 ? "-" : "+"} ${formatSeconds(Math.abs(delta))}`;
+}
+
+function formatCountDelta(current: number | null | undefined, previous: number | null | undefined): string {
+  if (current == null || previous == null || !Number.isFinite(current) || !Number.isFinite(previous)) return "N/A";
+  const delta = current - previous;
+  if (delta === 0) return "same";
+  return `${delta < 0 ? "-" : "+"} ${Math.abs(delta)}`;
 }
 
 function formatChartTime(seconds: number): string {

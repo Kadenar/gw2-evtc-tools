@@ -12,6 +12,7 @@ import {
 import { downloadBlob } from "../lib/format";
 import { formatDateTime, formatSeconds } from "../lib/format";
 import { RunSessionType, saveSessionLogs } from "../lib/runHistory";
+import { compactFieldClass, cx, fieldClass, inlineActionsClass, panelClass, sectionHeadingClass, splitPanelClass } from "../lib/ui";
 
 type BreakdownView = "timeline" | "details";
 
@@ -145,25 +146,25 @@ export function SessionTimer() {
   }
 
   return (
-    <section className="session-layout">
-      <div className="panel two-column-panel">
+    <section className="grid gap-4">
+      <div className={cx(panelClass, splitPanelClass)}>
         <div>
-          <h3>Use existing dps.report links</h3>
+          <h3 className="mb-3 mt-0 text-[1.25rem]">Use existing dps.report links</h3>
           <textarea
-            className="session-links-input"
+            className="min-h-30"
             value={linksText}
             onChange={(event) => setLinksText(event.target.value)}
             placeholder="Paste one or more dps.report links here..."
             rows={6}
           />
-          <div className="inline-actions">
+          <div className={inlineActionsClass}>
             <button type="button" className="btn btn-primary" disabled={!extractedLinks.length || isWorking} onClick={fetchLinks}>
               Fetch {extractedLinks.length || ""} link{extractedLinks.length === 1 ? "" : "s"}
             </button>
             <span className="muted">Detected {extractedLinks.length} link{extractedLinks.length === 1 ? "" : "s"}.</span>
           </div>
           {(progress || errors.length > 0) && (
-            <div className="compact-status">
+            <div className="mt-[0.45rem] grid gap-1">
               {progress && <div className={errors.length ? "status-text warning-text" : "status-text"}>{progress}</div>}
               {errors.map((error) => (
                 <div className="status-text error-text" key={`${error.source}-${error.message}`}>
@@ -175,15 +176,15 @@ export function SessionTimer() {
         </div>
 
         <div>
-          <h3>Or upload logs</h3>
-          <label className="field upload-domain-field">
-            <span>Upload domain</span>
+          <h3 className="mb-3 mt-0 text-[1.25rem]">Or upload logs</h3>
+          <label className={cx(fieldClass, "mx-0 mt-0 mb-3 max-w-60")}>
+            <span className="text-muted">Upload domain</span>
             <select value={uploadDomain} onChange={(event) => setUploadDomain(event.target.value as DpsReportDomain)}>
               <option value="https://dps.report">https://dps.report</option>
               <option value="https://b.dps.report">https://b.dps.report</option>
             </select>
           </label>
-          <label className="dropzone compact-dropzone">
+          <label className="dropzone mt-0 min-h-22">
             <input
               type="file"
               multiple
@@ -193,8 +194,8 @@ export function SessionTimer() {
             <span>Choose EVTC/ZEVTC logs</span>
             <small>{uploadFiles.length ? `${uploadFiles.length} file(s) selected` : "Uploaded from your browser to dps.report"}</small>
           </label>
-          <label className="check-row">
-            <input type="checkbox" checked={anonymous} onChange={(event) => setAnonymous(event.target.checked)} />
+          <label className="my-[0.8rem] flex items-center gap-[0.55rem] text-muted">
+            <input className="w-auto" type="checkbox" checked={anonymous} onChange={(event) => setAnonymous(event.target.checked)} />
             <span>Upload anonymously</span>
           </label>
           <button type="button" className="btn btn-primary" disabled={!uploadFiles.length || isWorking} onClick={uploadFilesToDpsReport}>
@@ -211,14 +212,14 @@ export function SessionTimer() {
         </div>
       </div>
 
-      <div className="panel">
-        <div className="section-heading">
+      <div className={panelClass}>
+        <div className={sectionHeadingClass}>
           <div>
-            <h3>Session summary</h3>
+            <h3 className="mb-3 mt-0 text-[1.25rem]">Session summary</h3>
           </div>
-          <div className="inline-actions summary-actions">
-            <label className="field compact inline-field">
-              <span>History type</span>
+          <div className={cx(inlineActionsClass, "items-center")}>
+            <label className={cx(fieldClass, compactFieldClass, "m-0 flex max-w-none items-center gap-[0.6rem]")}>
+              <span className="whitespace-nowrap text-muted">History type</span>
               <select value={runSessionType} disabled={isWorking} onChange={(event) => setRunSessionType(event.target.value as RunSessionType)}>
                 <option value="full-clear">Full clear</option>
                 <option value="practice">Practice</option>
@@ -241,45 +242,45 @@ export function SessionTimer() {
 
         {historyStatus ? <p className="status-text">{historyStatus}</p> : null}
 
-        <div className="time-sections single-summary">
-          <article className="time-section full-session">
-            <div className="time-section-header">
+        <div className="mt-[0.65rem] grid gap-[0.55rem]">
+          <article className="grid gap-[0.45rem] rounded-[0.6rem] border border-line bg-primary/8 p-[0.65rem]">
+            <div className="flex items-start justify-between gap-2">
               <div>
                 <span className="eyebrow">Full</span>
-                <h4>Full session</h4>
+                <h4 className="mb-0 mt-[0.05rem] text-[0.98rem]">Full session</h4>
               </div>
               <span className="badge badge-outline">{summary.logs.length} logs</span>
             </div>
-            <div className="time-stats">
-              <div>
-                <span>First pull</span>
-                <strong>{summary.start ? formatDateTime(summary.start) : "N/A"}</strong>
+            <div className="grid grid-cols-5 gap-[0.35rem] gap-x-[0.55rem] max-nav:grid-cols-2">
+              <div className="grid min-w-0 gap-[0.1rem]">
+                <span className="text-muted">First pull</span>
+                <strong className="wrap-anywhere text-[0.92rem]">{summary.start ? formatDateTime(summary.start) : "N/A"}</strong>
               </div>
-              <div>
-                <span>Last end</span>
-                <strong>{summary.end ? formatDateTime(summary.end) : "N/A"}</strong>
+              <div className="grid min-w-0 gap-[0.1rem]">
+                <span className="text-muted">Last end</span>
+                <strong className="wrap-anywhere text-[0.92rem]">{summary.end ? formatDateTime(summary.end) : "N/A"}</strong>
               </div>
-              <div>
-                <span>Elapsed</span>
-                <strong>{formatSeconds(summary.elapsed)}</strong>
+              <div className="grid min-w-0 gap-[0.1rem]">
+                <span className="text-muted">Elapsed</span>
+                <strong className="wrap-anywhere text-[0.92rem]">{formatSeconds(summary.elapsed)}</strong>
               </div>
-              <div>
-                <span>Combat</span>
-                <strong>{formatSeconds(summary.combat)}</strong>
+              <div className="grid min-w-0 gap-[0.1rem]">
+                <span className="text-muted">Combat</span>
+                <strong className="wrap-anywhere text-[0.92rem]">{formatSeconds(summary.combat)}</strong>
               </div>
-              <div>
-                <span>Downtime</span>
-                <strong>{formatSeconds(summary.downtime)}</strong>
+              <div className="grid min-w-0 gap-[0.1rem]">
+                <span className="text-muted">Downtime</span>
+                <strong className="wrap-anywhere text-[0.92rem]">{formatSeconds(summary.downtime)}</strong>
               </div>
             </div>
           </article>
         </div>
       </div>
 
-      <div className="panel">
-        <div className="section-heading">
+      <div className={panelClass}>
+        <div className={sectionHeadingClass}>
           <div>
-            <h3>Session breakdown</h3>
+            <h3 className="mb-3 mt-0 text-[1.25rem]">Session breakdown</h3>
           </div>
           <div role="tablist" className="tabs tabs-box" aria-label="Session breakdown view">
             <button
@@ -321,21 +322,21 @@ function TimelineView({ items }: { items: TimelineItem[] }) {
   const rows = buildTimelineRows(items);
 
   return (
-    <div className="timeline-view">
-      <div className="timeline-meta">
+    <div className="grid gap-[0.7rem]">
+      <div className="grid gap-1 text-[0.9rem] text-muted sm:flex sm:justify-between sm:gap-4">
         <span>{firstPull ? formatDateTime(firstPull.log.start) : "N/A"}</span>
         <span>{lastPull ? formatDateTime(lastPull.log.end) : "N/A"}</span>
       </div>
-      <div className="timeline-scroll" aria-label="Session timeline">
-        <div className="timeline-lines">
+      <div className="overflow-x-auto rounded-2xl border border-line bg-base-100" aria-label="Session timeline">
+        <div className="grid min-w-[760px] gap-[0.7rem] p-3">
           {rows.map((row) => (
-            <div className="timeline-row" key={row.key}>
-              <div className="timeline-row-heading">
+            <div className="grid gap-[0.35rem]" key={row.key}>
+              <div className="flex items-center text-[0.78rem] font-black uppercase text-accent-2 tracking-[0.08em]">
                 <span>{row.label}</span>
               </div>
-              <div className="timeline-track">{row.items.map((item) => renderTimelineItem(item))}</div>
+              <div className="flex min-h-[4.625rem] items-stretch gap-[0.3rem]">{row.items.map((item) => renderTimelineItem(item))}</div>
               {row.transitionAfter ? (
-                <div className="timeline-row-divider">
+                <div className="mx-auto mt-[0.2rem] flex w-max max-w-full items-center justify-center gap-2 rounded-full border border-dashed border-primary/55 bg-primary/8 px-3 py-[0.35rem] text-[0.86rem] text-accent-2">
                   <span>
                     {formatWing(row.transitionAfter.fromWing)} -&gt; {formatWing(row.transitionAfter.toWing)}
                   </span>
@@ -346,7 +347,7 @@ function TimelineView({ items }: { items: TimelineItem[] }) {
           ))}
         </div>
       </div>
-      <div className="timeline-legend" aria-label="Timeline legend">
+      <div className="flex flex-wrap gap-x-[0.9rem] gap-y-[0.55rem] text-[0.9rem] text-muted" aria-label="Timeline legend">
         <span>
           <i className="legend-dot kill" /> Kill
         </span>
@@ -402,36 +403,39 @@ function renderTimelineItem(item: TimelineItem) {
 
 function WingDetails({ logDetailGroups }: { logDetailGroups: ReturnType<typeof summarizeSession>["wings"] }) {
   return (
-    <div className="log-groups">
+    <div className="grid gap-[0.9rem]">
       {logDetailGroups.map((wing) => (
         <section className="log-group" key={wing.label}>
-          <div className="log-group-heading">
-            <h4>{wing.label}</h4>
+          <div className="mb-[0.4rem] flex items-center justify-between gap-3">
+            <h4 className="m-0 text-[1rem]">{wing.label}</h4>
             <span className="badge badge-outline">{wing.logs.length} logs</span>
           </div>
-          <div className="wing-time-summary" aria-label={`${wing.label} timing summary`}>
-            <div>
-              <span>First pull</span>
-              <strong>{wing.start ? formatDateTime(wing.start) : "N/A"}</strong>
+          <div
+            className="grid grid-cols-5 gap-x-[0.55rem] gap-y-[0.35rem] rounded-t-2xl border border-b-0 border-line bg-primary/6 px-[0.85rem] py-[0.7rem] max-nav:grid-cols-2"
+            aria-label={`${wing.label} timing summary`}
+          >
+            <div className="grid min-w-0 gap-[0.1rem]">
+              <span className="text-[0.86rem] text-muted">First pull</span>
+              <strong className="wrap-anywhere">{wing.start ? formatDateTime(wing.start) : "N/A"}</strong>
             </div>
-            <div>
-              <span>Last end</span>
-              <strong>{wing.end ? formatDateTime(wing.end) : "N/A"}</strong>
+            <div className="grid min-w-0 gap-[0.1rem]">
+              <span className="text-[0.86rem] text-muted">Last end</span>
+              <strong className="wrap-anywhere">{wing.end ? formatDateTime(wing.end) : "N/A"}</strong>
             </div>
-            <div>
-              <span>Elapsed</span>
-              <strong>{formatSeconds(wing.elapsed)}</strong>
+            <div className="grid min-w-0 gap-[0.1rem]">
+              <span className="text-[0.86rem] text-muted">Elapsed</span>
+              <strong className="wrap-anywhere">{formatSeconds(wing.elapsed)}</strong>
             </div>
-            <div>
-              <span>Combat</span>
-              <strong>{formatSeconds(wing.combat)}</strong>
+            <div className="grid min-w-0 gap-[0.1rem]">
+              <span className="text-[0.86rem] text-muted">Combat</span>
+              <strong className="wrap-anywhere">{formatSeconds(wing.combat)}</strong>
             </div>
-            <div>
-              <span>Downtime</span>
-              <strong>{formatSeconds(wing.downtime)}</strong>
+            <div className="grid min-w-0 gap-[0.1rem]">
+              <span className="text-[0.86rem] text-muted">Downtime</span>
+              <strong className="wrap-anywhere">{formatSeconds(wing.downtime)}</strong>
             </div>
           </div>
-          <div className="table-wrap">
+          <div className="overflow-x-auto rounded-b-2xl border border-line">
             <table>
               <thead>
                 <tr>

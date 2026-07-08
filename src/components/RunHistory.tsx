@@ -2,6 +2,7 @@ import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { downloadBlob } from "../lib/format";
 import { fetchBundledRunHistoryBackup, getBundledRunHistorySources, getSingleBundledRunHistorySource } from "../lib/bundledRunHistory";
 import { fetchEncounterPhaseData } from "../lib/dpsReport";
+import { compactFieldClass, cx, fieldClass, inlineActionsClass, panelClass, runHistoryShellClass } from "../lib/ui";
 import {
   ImportMode,
   RunRecord,
@@ -80,13 +81,16 @@ export function RunHistory() {
   }, [runs]);
 
   useEffect(() => {
-    if (!filteredRaidNights.length) {
+    const availableNightKeys = new Set([...filteredRaidNights, ...runTabRaidNights].map((night) => night.key));
+    const fallbackNightKey = filteredRaidNights[0]?.key ?? runTabRaidNights[0]?.key ?? null;
+
+    if (!availableNightKeys.size) {
       setSelectedNightKey(null);
       return;
     }
 
-    setSelectedNightKey((current) => (current && filteredRaidNights.some((night) => night.key === current) ? current : filteredRaidNights[0].key));
-  }, [filteredRaidNights]);
+    setSelectedNightKey((current) => (current && availableNightKeys.has(current) ? current : fallbackNightKey));
+  }, [filteredRaidNights, runTabRaidNights]);
 
   useEffect(() => {
     if (!selectedEncounterKey) return;
@@ -374,22 +378,34 @@ export function RunHistory() {
     }
   }
 
+  const navButtonClass =
+    "w-full cursor-pointer rounded-[0.7rem] border border-transparent bg-transparent px-[0.8rem] py-[0.7rem] text-left text-fg transition-colors";
+  const activeNavButtonClass =
+    "border-primary/55 bg-primary/12 font-black text-accent-2 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-primary)_28%,transparent)]";
+
   return (
-    <section className="run-history-shell">
-      <aside className="history-sidebar panel">
+    <section className={runHistoryShellClass}>
+      <aside className={cx(panelClass, "sticky top-4 grid gap-4 max-nav:static")}>
         {(["Primary", "Analysis"] as const).map((group) => (
-          <div className="history-nav-group" key={group}>
-            <span className="eyebrow">{group}</span>
+          <div className="grid gap-[0.65rem] max-nav:grid-cols-3" key={group}>
+            <span className="eyebrow max-nav:col-span-full">{group}</span>
             {HISTORY_VIEWS.filter((item) => item.group === group).map((item) => (
-              <button type="button" className={view === item.id ? "active" : ""} onClick={() => setView(item.id)} key={item.id}>
+              <button
+                type="button"
+                className={cx(navButtonClass, "hover:border-primary/45 hover:bg-primary/10", view === item.id && activeNavButtonClass)}
+                aria-current={view === item.id ? "page" : undefined}
+                aria-pressed={view === item.id}
+                onClick={() => setView(item.id)}
+                key={item.id}
+              >
                 {item.label}
               </button>
             ))}
           </div>
         ))}
 
-        <label className="field compact history-session-scope">
-          <span>Metric scope</span>
+        <label className={cx(fieldClass, compactFieldClass, "m-0 max-w-none")}>
+          <span className="text-muted">Metric scope</span>
           <select value={filters.sessionTypeFilter} onChange={(event) => filterActions.setSessionTypeFilter(event.target.value as SessionTypeFilter)}>
             <option value="full-clear">Full clear only</option>
             <option value="practice">Practice only</option>
@@ -397,21 +413,27 @@ export function RunHistory() {
           </select>
         </label>
 
-        <details className="history-sidebar-management" open={view === "manage" ? true : undefined}>
-          <summary>Manage history</summary>
-          <div className="history-nav-group">
-            <button type="button" className={view === "manage" ? "active" : ""} onClick={() => setView("manage")}>
+        <details className="border-t border-line pt-[0.85rem]" open={view === "manage" ? true : undefined}>
+          <summary className="cursor-pointer font-black">Manage history</summary>
+          <div className="grid gap-[0.65rem]">
+            <button
+              type="button"
+              className={cx(navButtonClass, "hover:border-primary/45 hover:bg-primary/10", view === "manage" && activeNavButtonClass)}
+              aria-current={view === "manage" ? "page" : undefined}
+              aria-pressed={view === "manage"}
+              onClick={() => setView("manage")}
+            >
               Manage
             </button>
           </div>
-          <label className="field compact">
-            <span>Import mode</span>
+          <label className={cx(fieldClass, compactFieldClass, "max-w-none")}>
+            <span className="text-muted">Import mode</span>
             <select value={importMode} disabled={isWorking} onChange={(event) => setImportMode(event.target.value as ImportMode)}>
               <option value="merge">Merge</option>
               <option value="replace">Replace</option>
             </select>
           </label>
-          <div className="history-sidebar-actions">
+          <div className="grid items-stretch gap-[0.65rem]">
             <button type="button" className="btn btn-block" disabled={!hasRuns || isWorking} onClick={exportBackup}>
               Export backup
             </button>
@@ -426,14 +448,14 @@ export function RunHistory() {
         </details>
       </aside>
 
-      <div className="history-view">
+      <div className="grid gap-[0.65rem]">
         {status ? <p className="status-text">{status}</p> : null}
-        {isLoading ? <div className="panel"><p className="muted">Loading run history...</p></div> : null}
+        {isLoading ? <div className={panelClass}><p className="muted">Loading run history...</p></div> : null}
         {!isLoading && !hasRuns ? (
-          <div className="panel">
+          <div className={panelClass}>
             <p className="muted">No saved runs yet. Load reports in the session timer, then save them here.</p>
             {bundledRunHistorySource ? (
-              <div className="inline-actions">
+              <div className={inlineActionsClass}>
                 <button type="button" className="btn" disabled={isWorking} onClick={() => void importBundledBackup()}>
                   Load bundled backup
                 </button>

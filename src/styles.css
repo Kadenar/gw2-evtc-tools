@@ -3,11 +3,6 @@
   themes: light --default, dark --prefersdark;
 }
 
-/* Domain-widget tokens aliased onto daisyUI's theme-aware color slots, so the
-   custom panels / rows / timeline follow the active light or dark theme.
-   daisyUI owns the palette; these are just the semantic names the widget CSS
-   references. Slots that collide with daisyUI's own names (accent / info /
-   success / warning) are used directly instead of re-declared here. */
 @theme {
   --color-fg: var(--color-base-content);
   --color-muted: color-mix(in oklab, var(--color-base-content) 62%, transparent);
@@ -21,7 +16,6 @@
   --font-sans:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
-  /* Matches the original single `max-width: 860px` breakpoint via `max-nav:` utilities. */
   --breakpoint-nav: 860px;
 }
 
@@ -59,7 +53,7 @@
   }
 
   textarea {
-    @apply min-h-45 resize-y;
+    @apply resize-y;
   }
 
   input:focus,
@@ -84,7 +78,6 @@
     @apply cursor-not-allowed opacity-[0.48];
   }
 
-  /* Global data tables (rendered as bare <table> inside .table-wrap). */
   table {
     @apply w-full border-collapse;
     min-width: 760px;
@@ -104,167 +97,51 @@
   tr:last-child td {
     border-bottom: 0;
   }
-
-  tbody tr {
-    @apply cursor-pointer;
-  }
 }
 
 @layer components {
-  /* Commodity primitives (buttons, badges, alerts, tabs, form inputs) now come
-     from daisyUI, themed by the active light / dark theme. */
-
-  /* ---- Helpers ---- */
   .muted {
     @apply text-muted;
   }
+
   .eyebrow {
     @apply text-[0.75rem] font-extrabold uppercase text-accent-2;
     letter-spacing: 0.15em;
   }
+
   .status-text {
     @apply text-[0.9rem] text-info;
   }
+
   .warning-text {
     @apply text-warning;
   }
+
   .error-text {
     @apply text-danger;
   }
 
-  /* ---- Surfaces ---- */
-  .panel {
-    @apply min-w-0 rounded-xl border border-line bg-panel p-4;
-  }
-  .panel h2,
-  .panel h3,
-  .panel p {
-    margin-top: 0;
-  }
-  .panel h2 {
-    @apply mb-2 text-[1.5rem] leading-[1.2];
-  }
-  .panel h3 {
-    @apply mb-3 text-[1.25rem];
-  }
-
-  .two-column-panel {
-    @apply grid gap-4;
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 0.75fr);
-  }
-
-  .session-layout {
-    @apply grid gap-4;
-  }
-
-  /* ---- Forms ---- */
-  .field {
-    @apply my-[0.9rem] grid gap-[0.4rem];
-  }
-  .field.compact {
-    @apply max-w-55;
-  }
-  .field span {
-    @apply text-muted;
-  }
-  .inline-field {
-    @apply m-0 min-w-40;
-  }
-  .upload-domain-field {
-    @apply mx-0 mt-0 mb-3 max-w-60;
-  }
-  .upload-domain-field select {
-    @apply rounded-[0.7rem] px-3 py-[0.55rem];
-  }
-  .session-links-input {
-    @apply min-h-30;
-  }
-
-  .check-row {
-    @apply my-[0.8rem] flex items-center gap-[0.55rem] text-muted;
-  }
-  .check-row input {
-    @apply w-auto;
-  }
-
   .dropzone {
-    @apply mt-[0.8rem] grid min-h-27.5 cursor-pointer place-items-center gap-1 rounded-xl p-4 text-center;
+    @apply mt-[0.8rem] grid min-h-27.5 cursor-pointer place-items-center gap-1 rounded-xl bg-base-200 p-4 text-center;
     border: 1px dashed var(--color-base-300);
-    background: var(--color-base-200);
   }
-  .compact-dropzone {
-    @apply mt-0 min-h-22;
-  }
+
   .dropzone input {
     @apply hidden;
   }
+
   .dropzone span {
     @apply text-[1.1rem] font-black;
   }
+
   .dropzone small {
     @apply text-muted;
   }
 
-  /* ---- Stat & summary cards ---- */
-  .stat-list {
-    @apply my-4 grid grid-cols-2 gap-3;
-  }
-  .stat-list > div {
-    @apply grid gap-[0.2rem] rounded-2xl border border-line p-[0.85rem];
-    background: var(--color-base-200);
-  }
-  .stat-list span {
-    @apply text-muted;
-  }
-
-  .history-stat-grid {
-    @apply grid gap-3;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  }
-  .history-filter-grid {
-    @apply grid items-end gap-3;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  }
-  .history-overview-grid {
-    @apply grid grid-cols-2 gap-3;
-  }
-
-  .summary-actions {
-    @apply items-center;
-  }
-  .summary-actions .inline-field {
-    @apply flex max-w-none items-center gap-[0.6rem];
-  }
-  .summary-actions .inline-field span {
-    @apply whitespace-nowrap;
-  }
-  .summary-actions .inline-field select {
-    @apply w-auto min-w-40;
-  }
-
-  .history-stat-card,
-  .record-card {
-    @apply grid min-w-0 gap-[0.15rem] rounded-xl border border-line p-[0.8rem];
-    background: var(--color-surface);
-  }
-  .history-stat-card span,
-  .history-stat-card small,
-  .record-card span,
-  .record-card small {
-    @apply text-muted;
-  }
-  .history-stat-card strong,
-  .record-card strong {
-    @apply text-[1.25rem] wrap-anywhere;
-  }
-  .record-card a {
-    @apply mt-[0.2rem] text-[0.9rem];
-  }
-
-  /* ---- Bars & simple charts ---- */
   .history-bar {
     @apply h-[0.45rem] overflow-hidden rounded-full bg-base-300;
   }
+
   .history-bar span {
     @apply block h-full rounded-[inherit];
     background: linear-gradient(90deg, var(--color-success), var(--color-accent-2));
@@ -273,26 +150,24 @@
   .time-stack {
     @apply flex h-3 overflow-hidden rounded-full bg-base-300;
   }
+
   .time-stack span {
     @apply block min-w-0;
   }
+
   .time-stack .combat {
     background: linear-gradient(90deg, var(--color-success), var(--color-accent-2));
   }
+
   .time-stack .downtime {
     background: color-mix(in oklab, var(--color-info) 72%, transparent);
   }
 
-  .trend-chart {
-    @apply overflow-x-auto;
-  }
-  .trend-chart svg {
-    @apply block w-full min-w-130;
-  }
   .trend-axis {
     stroke: color-mix(in oklab, var(--color-base-content) 24%, transparent);
     stroke-width: 1;
   }
+
   .trend-line {
     fill: none;
     stroke: var(--color-primary);
@@ -300,645 +175,113 @@
     stroke-linecap: round;
     stroke-linejoin: round;
   }
+
   .trend-point {
     fill: var(--color-primary);
     stroke: var(--color-base-100);
     stroke-width: 2;
   }
+
   .trend-label,
   .trend-date {
     fill: var(--color-muted);
     font-size: 0.78rem;
   }
 
-  /* ---- Dashboard recent-runs table ---- */
-  .recent-runs-panel {
-    @apply overflow-x-auto;
-  }
-  .recent-runs-table {
-    @apply grid gap-[0.45rem] min-w-170;
-  }
-  .recent-runs-row {
-    @apply grid min-w-0 items-center gap-[0.55rem] rounded-[0.7rem] border border-line px-3 py-[0.65rem];
-    grid-template-columns:
-      minmax(56px, 0.65fr) minmax(160px, 1.45fr) minmax(76px, 0.8fr)
-      minmax(74px, 0.8fr) minmax(52px, 0.55fr) minmax(74px, 0.8fr);
-    background: var(--color-surface);
-  }
-  .recent-runs-head {
-    @apply border-transparent bg-transparent pt-0 pb-0 text-[0.82rem] font-extrabold text-muted;
-  }
-  .recent-runs-row > * {
-    @apply min-w-0 wrap-anywhere;
-  }
-  .recent-runs-row span {
-    @apply text-muted;
-  }
-  .recent-runs-row strong {
-    @apply text-fg;
-  }
-
-  /* ---- Downtime breakdown ---- */
-  .breakdown-list {
-    @apply grid gap-[0.6rem];
-  }
-  .breakdown-row {
-    @apply grid min-w-0 items-baseline gap-[0.55rem];
-    grid-template-columns: minmax(110px, 1fr) auto auto;
-  }
-  .breakdown-row span,
-  .breakdown-row small {
-    @apply text-muted;
-  }
-  .breakdown-row strong {
-    @apply wrap-anywhere;
-  }
-  .breakdown-mini-stats {
-    @apply grid gap-[0.45rem] border-t border-line pt-[0.65rem];
-  }
-
-  /* ---- Encounters, weeks & run lists ---- */
-  .encounter-summary-list,
-  .run-card-list,
-  .encounter-run-list,
-  .week-run-groups,
-  .week-run-group {
-    @apply grid gap-[0.45rem];
-  }
-
-  .encounter-summary-row,
-  .encounter-run-row,
-  .week-run-row,
-  .run-card {
-    @apply grid items-center gap-3 rounded-xl border border-line px-[0.8rem] py-[0.7rem];
-    background: var(--color-surface);
-  }
-  .encounter-summary-row,
-  .encounter-run-row,
-  .week-run-row {
-    @apply w-full cursor-pointer text-left text-fg;
-  }
-  .encounter-summary-row {
-    grid-template-columns: minmax(180px, 1fr) 90px 90px 120px;
-  }
-  .encounter-run-row {
-    grid-template-columns: minmax(180px, 1fr) 90px 90px 100px;
-  }
-  .encounter-run-header,
-  .week-run-header {
-    @apply grid gap-3 px-[0.8rem] pt-0 pb-[0.15rem] text-[0.78rem] font-black uppercase text-muted;
-    letter-spacing: 0.08em;
-  }
-  .encounter-run-header {
-    grid-template-columns: minmax(180px, 1fr) 90px 90px 140px;
-  }
-  .week-run-row {
-    @apply gap-[0.55rem] px-[0.7rem] py-2;
-    grid-template-columns: 168px minmax(160px, 1fr) 84px 84px;
-  }
-  .week-run-header {
-    grid-template-columns: 168px minmax(160px, 1fr) 84px 84px;
-  }
-  .week-run-row > :last-child,
-  .week-run-header > :last-child {
-    @apply whitespace-nowrap;
-  }
-  .encounter-summary-row:hover,
-  .encounter-run-row:hover,
-  .week-run-row:hover,
-  .run-main:hover {
-    border-color: color-mix(in oklab, var(--color-primary) 48%, transparent);
-  }
-
-  .week-run-group {
-    @apply gap-[0.6rem];
-  }
-  .week-run-group-header {
-    @apply flex items-center justify-between gap-3;
-  }
-  .week-run-group h5 {
-    @apply m-0 text-[0.9rem];
-  }
-
-  .encounter-list-table {
-    table-layout: fixed;
-  }
-  .encounter-list-col-encounter {
-    width: auto;
-  }
-  .encounter-list-col-metric {
-    width: 120px;
-  }
-  .encounter-list-col-count {
-    width: 88px;
-  }
-  .encounter-list-col-rate {
-    width: 128px;
-  }
-  .encounter-list-name {
-    @apply inline-flex min-w-0 flex-wrap items-center gap-[0.4rem];
-  }
-  .encounter-list-table th:not(:first-child),
-  .encounter-list-table td:not(:first-child) {
-    @apply whitespace-nowrap text-right;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .encounter-detail {
-    @apply grid gap-[0.85rem];
-  }
-  .encounter-chart-section {
-    @apply grid gap-[0.45rem];
-  }
-  .encounter-chart-heading {
-    @apply flex items-start justify-between gap-4;
-  }
-  .encounter-chart-heading h4,
-  .encounter-chart-heading p {
-    @apply m-0;
-  }
-  .encounter-chart-heading h4 {
-    @apply mb-[0.2rem];
-  }
-
-  .run-trend-scroll {
-    @apply overflow-x-auto rounded-xl border border-line p-[0.65rem];
-    background: var(--color-base-100);
-  }
-  .run-trend {
-    @apply flex items-end gap-[0.35rem] min-h-22.5 w-max min-w-full;
-  }
-  .trend-dot {
-    @apply flex items-end justify-center rounded-full;
-    flex: 0 0 4.25rem;
-    height: 68px;
-  }
-  .trend-dot span {
-    @apply block rounded-[inherit] w-[0.9rem] min-h-[0.55rem];
-  }
-  .trend-dot.kill span {
-    background: color-mix(in oklab, var(--color-success) 24%, transparent);
-  }
-  .trend-dot.wipe span {
-    background: color-mix(in oklab, var(--color-error) 24%, transparent);
-  }
-  .trend-dot.unknown span {
-    background: color-mix(in oklab, var(--color-info) 24%, transparent);
-  }
-  .trend-x-axis {
-    @apply mt-[0.45rem] flex w-max min-w-full gap-[0.35rem] border-t pt-[0.45rem];
-    border-top-color: var(--color-base-300);
-  }
-  .trend-axis-tick {
-    @apply text-center text-[0.72rem] leading-[1.15] text-muted;
-    flex: 0 0 4.25rem;
-    white-space: normal;
-  }
-
-  /* ---- Run cards (Runs tab) ---- */
-  .run-card {
-    grid-template-columns: auto minmax(220px, 1fr) minmax(220px, auto) auto;
-  }
-  .run-card.selected {
-    border-color: color-mix(in oklab, var(--color-primary) 55%, transparent);
-    background: color-mix(in oklab, var(--color-primary) 8%, transparent);
-  }
-  .run-select input {
-    @apply w-auto;
-  }
-  .run-main {
-    @apply grid min-w-0 cursor-pointer gap-[0.1rem] rounded-[0.65rem] border border-transparent bg-transparent p-[0.35rem] text-left text-fg;
-  }
-  .run-main span,
-  .run-date {
-    @apply text-muted;
-  }
-  .run-main strong {
-    @apply wrap-anywhere;
-  }
-  .run-metrics,
-  .run-actions {
-    @apply flex flex-wrap items-center justify-end gap-2;
-  }
-
-  /* ---- Run History shell / sidebar ---- */
-  .run-history-shell {
-    @apply grid items-start gap-[0.85rem];
-    grid-template-columns: 210px minmax(0, 1fr);
-  }
-  .history-sidebar {
-    @apply sticky top-4 grid gap-4;
-  }
-  .history-nav-group,
-  .history-sidebar-actions,
-  .history-view,
-  .raid-night-list,
-  .raid-night-detail,
-  .linear-timeline {
-    @apply grid gap-[0.65rem];
-  }
-  .history-nav-group button,
-  .raid-night-list button {
-    @apply w-full cursor-pointer rounded-[0.7rem] border border-transparent bg-transparent px-[0.8rem] py-[0.7rem] text-left text-fg;
-  }
-  .history-nav-group button:hover,
-  .raid-night-list button:hover,
-  .history-nav-group button.active,
-  .raid-night-list button.active {
-    border-color: color-mix(in oklab, var(--color-primary) 45%, transparent);
-    background: color-mix(in oklab, var(--color-primary) 10%, transparent);
-  }
-  .history-nav-group button.active {
-    @apply font-black text-accent-2;
-  }
-  .history-sidebar-management {
-    @apply border-t border-line pt-[0.85rem];
-  }
-  .history-sidebar-management summary {
-    @apply cursor-pointer font-black;
-  }
-  .history-sidebar-management .field.compact {
-    @apply max-w-none;
-  }
-  .history-session-scope.field.compact {
-    @apply m-0 max-w-none;
-  }
-  .history-sidebar-actions {
-    @apply items-stretch;
-  }
-  .history-sidebar-actions .secondary,
-  .history-sidebar-actions .ghost,
-  .history-sidebar-actions .file-button {
-    @apply w-full justify-center;
-  }
-
-  .runs-split {
-    @apply grid gap-4;
-    grid-template-columns: minmax(220px, 0.65fr) minmax(0, 1.35fr);
-  }
-  .raid-night-list button {
-    @apply grid gap-[0.1rem];
-  }
-  .raid-night-list span,
-  .raid-night-list small {
-    @apply text-muted;
-  }
-
-  .selected-row,
-  tbody tr:hover {
-    background: color-mix(in oklab, var(--color-primary) 8%, transparent);
-  }
-
-  /* ---- Weekly view ---- */
-  .weekly-list {
-    @apply grid gap-[0.9rem];
-  }
-  .week-compare-controls {
-    @apply grid items-end gap-[0.9rem];
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  }
-  .week-compare-controls .field.compact {
-    @apply m-0 max-w-none;
-  }
-  .week-compare-swap {
-    @apply inline-flex min-h-12 min-w-12 cursor-pointer items-center justify-center rounded-[0.9rem] border border-line p-[0.8rem] text-accent-2;
-    background: var(--color-base-200);
-  }
-  .week-archive-list {
-    @apply grid gap-3;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  }
-  .week-card {
-    @apply grid gap-[0.8rem] rounded-xl border border-line p-[0.85rem];
-    background: var(--color-surface);
-  }
-  .week-card.selected {
-    border-color: color-mix(in oklab, var(--color-warning) 42%, transparent);
-    background: linear-gradient(180deg, color-mix(in oklab, var(--color-warning) 8%, transparent), var(--color-base-200));
-  }
-  .week-card.compare-selected {
-    border-color: color-mix(in oklab, var(--color-info) 38%, transparent);
-    background: linear-gradient(180deg, color-mix(in oklab, var(--color-info) 8%, transparent), var(--color-base-200));
-  }
-  .week-card.selected.compare-selected {
-    border-color: color-mix(in oklab, var(--color-primary) 50%, transparent);
-    background: linear-gradient(180deg, color-mix(in oklab, var(--color-primary) 10%, transparent), var(--color-base-200));
-  }
-  .week-card-header {
-    @apply flex items-start justify-between gap-3;
-  }
-  .week-card-select {
-    @apply flex min-w-0 flex-1 cursor-pointer items-start justify-between gap-3 border-0 bg-transparent p-0 text-left text-fg;
-  }
-  .week-card-select.active h4 {
-    @apply text-accent-2;
-  }
-  .week-card-header-actions {
-    @apply grid justify-items-end gap-[0.35rem];
-  }
-  .week-card-header > .week-card-toggle {
-    @apply w-auto flex-none;
-  }
-  .week-card-toggle {
-    @apply w-full cursor-pointer border-0 bg-transparent p-0 text-left text-fg;
-  }
-  .week-card h4 {
-    @apply mt-[0.05rem] mb-0 text-[1.05rem];
-  }
-  .week-card-affordance {
-    @apply inline-flex items-center gap-[0.4rem] text-[0.82rem] font-black uppercase text-muted;
-    letter-spacing: 0.04em;
-  }
-  .week-card-chevron {
-    @apply inline-block;
-    transition: transform 140ms ease;
-  }
-  .week-card-chevron.expanded {
-    transform: rotate(180deg);
-  }
-  .week-card-selected-label {
-    @apply text-[0.82rem] font-black uppercase text-accent-2;
-    letter-spacing: 0.04em;
-  }
-  .week-summary-inline {
-    @apply flex flex-wrap text-[0.92rem];
-    gap: 0.45rem 1rem;
-  }
-  .week-player-cell {
-    @apply grid gap-[0.15rem];
-  }
-  .week-player-cell strong,
-  .week-player-cell small {
-    @apply block;
-  }
-  .week-player-table {
-    table-layout: fixed;
-  }
-  .week-player-table th:nth-child(1),
-  .week-player-table td:nth-child(1) {
-    width: 220px;
-  }
-  .week-player-table th:nth-child(2),
-  .week-player-table td:nth-child(2),
-  .week-player-table th:nth-child(3),
-  .week-player-table td:nth-child(3) {
-    width: auto;
-  }
-  .week-player-encounters {
-    @apply grid gap-[0.35rem];
-  }
-  .week-player-encounter-row {
-    @apply flex items-baseline justify-between gap-3 rounded-[0.55rem] px-[0.6rem] py-[0.45rem];
-    border: 1px solid var(--color-base-200);
-    background: var(--color-base-200);
-  }
-  .week-player-encounter-row span {
-    @apply text-muted;
-  }
-  .week-player-encounter-row strong {
-    @apply whitespace-nowrap;
-  }
-
-  /* ---- Session time sections ---- */
-  .time-sections {
-    @apply mt-[0.65rem] grid gap-[0.55rem];
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-  .time-sections.single-summary {
-    grid-template-columns: 1fr;
-  }
-  .time-section {
-    @apply grid gap-[0.45rem] rounded-[0.6rem] border border-line p-[0.65rem];
-    background: var(--color-base-200);
-  }
-  .time-section.full-session {
-    grid-column: 1 / -1;
-    background: color-mix(in oklab, var(--color-primary) 8%, transparent);
-  }
-  .time-section-header {
-    @apply flex items-start justify-between gap-2;
-  }
-  .time-section h4 {
-    @apply mt-[0.05rem] mb-0 text-[0.98rem];
-  }
-  .time-stats {
-    @apply grid grid-cols-2;
-    gap: 0.35rem 0.55rem;
-  }
-  .full-session .time-stats {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-  .time-stats div {
-    @apply grid min-w-0 gap-[0.1rem];
-  }
-  .time-stats span {
-    @apply text-muted;
-  }
-  .time-stats strong {
-    @apply text-[0.92rem] wrap-anywhere;
-  }
-  .time-stats-inline {
-    @apply gap-[0.6rem];
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  }
-  .time-stats-inline div {
-    @apply flex items-baseline justify-between gap-[0.55rem] rounded-[0.7rem] border border-line px-[0.7rem] py-[0.55rem];
-    background: var(--color-base-200);
-  }
-  .time-stats-inline span,
-  .time-stats-inline strong {
-    @apply whitespace-nowrap;
-  }
-
-  /* ---- Action rows / status ---- */
-  .inline-actions {
-    @apply flex flex-wrap items-center gap-[0.6rem];
-  }
-  .compact-status {
-    @apply mt-[0.45rem] grid gap-1;
-  }
-  .section-heading {
-    @apply flex items-start justify-between gap-4;
-  }
-
-  /* ---- Timeline (session breakdown) ---- */
-  .timeline-view {
-    @apply grid gap-[0.7rem];
-  }
-  .timeline-meta {
-    @apply flex justify-between gap-4 text-[0.9rem] text-muted;
-  }
-  .timeline-scroll {
-    @apply overflow-x-auto rounded-2xl border border-line;
-    background: var(--color-base-100);
-  }
-  .timeline-lines {
-    @apply grid gap-[0.7rem] p-3 min-w-215;
-  }
-  .timeline-row {
-    @apply grid gap-[0.35rem];
-  }
-  .timeline-row-heading {
-    @apply flex items-center text-[0.78rem] font-black uppercase text-accent-2;
-    letter-spacing: 0.08em;
-  }
-  .timeline-track {
-    @apply flex items-stretch gap-[0.3rem] min-h-18.5;
-  }
-  .timeline-row-divider {
-    @apply mx-auto mt-[0.2rem] flex w-max max-w-full items-center justify-center gap-2 rounded-full px-3 py-[0.35rem] text-[0.86rem] text-accent-2;
-    border: 1px dashed color-mix(in oklab, var(--color-primary) 55%, transparent);
-    background: color-mix(in oklab, var(--color-primary) 8%, transparent);
-  }
-  .timeline-row-divider strong {
-    @apply text-fg;
-  }
   .timeline-segment {
-    @apply relative grid content-center gap-[0.2rem] overflow-hidden rounded-[0.7rem] border border-line px-2 py-[0.4rem] no-underline min-w-[82px];
+    @apply relative grid min-w-20.5 content-center gap-[0.2rem] overflow-hidden rounded-[0.7rem] border border-line px-2 py-[0.4rem] no-underline;
   }
+
   .timeline-segment::before {
     content: "";
     @apply pointer-events-none absolute inset-0 opacity-[0.16];
   }
+
   .timeline-pull {
     @apply text-fg;
   }
+
   .timeline-pull.kill {
     border-color: color-mix(in oklab, var(--color-success) 45%, transparent);
   }
+
   .timeline-pull.kill::before {
     background: var(--color-success);
   }
+
   .timeline-pull.wipe {
     border-color: color-mix(in oklab, var(--color-error) 50%, transparent);
   }
+
   .timeline-pull.wipe::before {
     background: var(--color-danger);
   }
+
   .timeline-pull.unknown {
     border-color: color-mix(in oklab, var(--color-info) 45%, transparent);
   }
+
   .timeline-pull.unknown::before {
     background: var(--color-info);
   }
+
   .timeline-gap {
-    @apply text-muted min-w-21.5;
+    @apply min-w-21.5 text-muted;
     border-style: dashed;
   }
+
   .timeline-gap::before {
     background: var(--color-base-300);
   }
+
   .timeline-gap .timeline-label,
   .timeline-gap .timeline-subline {
     @apply overflow-hidden text-ellipsis whitespace-nowrap;
     overflow-wrap: normal;
   }
+
   .timeline-label,
   .timeline-subline {
-    @apply relative z-[1] min-w-0;
+    @apply relative z-1 min-w-0;
   }
+
   .timeline-label {
-    @apply font-black leading-[1.2] [overflow-wrap:anywhere];
+    @apply font-black leading-[1.2] wrap-anywhere;
   }
+
   .timeline-subline {
     @apply text-[0.82rem] text-muted;
   }
+
   .timeline-badge {
     @apply ml-[0.35rem] inline-block text-[0.72rem] text-accent-2;
   }
-  .timeline-legend {
-    @apply flex flex-wrap text-[0.9rem] text-muted;
-    gap: 0.55rem 0.9rem;
-  }
-  .timeline-legend span {
-    @apply inline-flex items-center gap-[0.35rem];
-  }
+
   .legend-dot {
-    @apply h-[0.7rem] w-[0.7rem] rounded-full border border-line;
+    @apply inline-block h-[0.7rem] w-[0.7rem] rounded-full border border-line;
   }
+
   .legend-dot.kill {
     background: var(--color-success);
   }
+
   .legend-dot.wipe {
     background: var(--color-danger);
   }
+
   .legend-dot.unknown {
     background: var(--color-info);
   }
+
   .legend-dot.downtime {
     background: color-mix(in oklab, var(--color-base-content) 28%, transparent);
   }
+
   .legend-dot.transition {
     background: var(--color-accent-2);
   }
-
-  /* ---- Linear (raid-night) timeline ---- */
-  .linear-timeline-row {
-    @apply grid min-w-0 items-center gap-[0.55rem] rounded-[0.7rem] border border-line px-[0.8rem] py-[0.7rem] text-fg no-underline;
-    grid-template-columns: 82px minmax(160px, 1fr) fit-content(140px) 72px;
-    background: var(--color-surface);
-  }
-  .linear-timeline-row > * {
-    @apply min-w-0 wrap-anywhere;
-  }
-  .linear-timeline-row span {
-    @apply text-muted;
-  }
-  .linear-timeline-row > :nth-child(3),
-  .linear-timeline-row > :last-child {
-    @apply whitespace-nowrap;
-    overflow-wrap: normal;
-  }
-  .linear-timeline-row.kill {
-    border-color: color-mix(in oklab, var(--color-success) 32%, transparent);
-  }
-  .linear-timeline-row.wipe {
-    border-color: color-mix(in oklab, var(--color-error) 34%, transparent);
-  }
-  .linear-timeline-row.downtime {
-    border-style: dashed;
-    background: var(--color-base-200);
-  }
-
-  /* ---- Tables (wrappers & wing summary) ---- */
-  .table-wrap {
-    @apply overflow-x-auto rounded-2xl border border-line;
-  }
-  .compact-table table {
-    min-width: 680px;
-  }
-  .log-groups {
-    @apply grid gap-[0.9rem];
-  }
-  .log-group-heading {
-    @apply mb-[0.4rem] flex items-center justify-between gap-3;
-  }
-  .log-group-heading h4 {
-    @apply m-0 text-[1rem];
-  }
-  .wing-time-summary {
-    @apply grid gap-x-[0.55rem] gap-y-[0.35rem] px-[0.85rem] py-[0.7rem];
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    border: 1px solid var(--color-line);
-    border-bottom: 0;
-    border-radius: 1rem 1rem 0 0;
-    background: color-mix(in oklab, var(--color-primary) 6%, transparent);
-  }
-  .wing-time-summary div {
-    @apply grid min-w-0 gap-[0.1rem];
-  }
-  .wing-time-summary span {
-    @apply text-[0.86rem] text-muted;
-  }
-  .wing-time-summary strong {
-    @apply wrap-anywhere;
-  }
-  .wing-time-summary + .table-wrap {
-    border-radius: 0 0 1rem 1rem;
-  }
 }
 
-/* Visually-hidden helper (kept as a plain utility). */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -949,82 +292,4 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
-}
-
-/* Responsive collapse — ports the original single 860px breakpoint. */
-@media (max-width: 860px) {
-  .two-column-panel,
-  .run-history-shell,
-  .runs-split {
-    grid-template-columns: 1fr;
-  }
-
-  .history-sidebar {
-    position: static;
-  }
-
-  .history-nav-group {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .history-nav-group .eyebrow {
-    grid-column: 1 / -1;
-  }
-
-  .week-compare-controls {
-    grid-template-columns: 1fr;
-  }
-
-  .stat-list,
-  .time-sections,
-  .history-stat-grid,
-  .history-filter-grid,
-  .history-overview-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .time-stats,
-  .full-session .time-stats,
-  .wing-time-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .encounter-summary-row,
-  .encounter-run-row,
-  .week-run-row,
-  .run-card,
-  .linear-timeline-row {
-    grid-template-columns: 1fr;
-  }
-
-  .encounter-run-header,
-  .week-run-header {
-    display: none;
-  }
-
-  .run-metrics,
-  .run-actions {
-    justify-content: flex-start;
-  }
-
-  .section-heading {
-    display: grid;
-  }
-
-  .encounter-chart-heading {
-    display: grid;
-  }
-
-  .view-toggle {
-    width: max-content;
-  }
-
-  .timeline-meta {
-    display: grid;
-    gap: 0.25rem;
-  }
-
-  .timeline-lines {
-    min-width: 760px;
-  }
 }
