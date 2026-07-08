@@ -1,21 +1,22 @@
 @import "tailwindcss";
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark;
+}
 
-/* Design tokens — replaces the scattered hex/rgba magic values. */
+/* Domain-widget tokens aliased onto daisyUI's theme-aware color slots, so the
+   custom panels / rows / timeline follow the active light or dark theme.
+   daisyUI owns the palette; these are just the semantic names the widget CSS
+   references. Slots that collide with daisyUI's own names (accent / info /
+   success / warning) are used directly instead of re-declared here. */
 @theme {
-  --color-bg: #100d15;
-  --color-fg: #f9f6ee;
-  --color-muted: #b7adbf;
-  --color-accent: #f4a261;
-  --color-accent-2: #f7c57d;
-  --color-danger: #ff7878;
-  --color-success: #8de6b1;
-  --color-warning: #f8d36f;
-  --color-info: #9bc7ff;
+  --color-fg: var(--color-base-content);
+  --color-muted: color-mix(in oklab, var(--color-base-content) 62%, transparent);
+  --color-accent-2: var(--color-primary);
+  --color-danger: var(--color-error);
 
-  --color-panel: rgba(255, 255, 255, 0.07);
-  --color-panel-strong: rgba(255, 255, 255, 0.11);
-  --color-line: rgba(255, 255, 255, 0.14);
-  --color-surface: rgba(255, 255, 255, 0.045);
+  --color-panel: var(--color-base-200);
+  --color-surface: var(--color-base-200);
+  --color-line: var(--color-base-300);
 
   --font-sans:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -25,16 +26,12 @@
 }
 
 @layer base {
-  :root {
-    color-scheme: dark;
-  }
-
   body {
     margin: 0;
     min-width: 320px;
     min-height: 100vh;
-    background: var(--color-bg);
-    color: var(--color-fg);
+    background: var(--color-base-100);
+    color: var(--color-base-content);
     font-family: var(--font-sans);
     line-height: 1.5;
     font-synthesis: none;
@@ -43,17 +40,17 @@
   }
 
   a {
-    color: var(--color-accent-2);
+    color: var(--color-primary);
   }
 
   code {
-    @apply rounded-md border border-line bg-white/10 px-1.5 py-0.5;
+    @apply rounded-md border border-line bg-base-200 px-1.5 py-0.5;
   }
 
   input,
   select,
   textarea {
-    @apply w-full rounded-2xl border border-line bg-black/20 px-3.5 py-3 text-fg outline-none;
+    @apply w-full rounded-2xl border border-line bg-base-100 px-3.5 py-3 text-fg outline-none;
   }
 
   input[type="checkbox"],
@@ -68,19 +65,19 @@
   input:focus,
   select:focus,
   textarea:focus {
-    border-color: rgba(244, 162, 97, 0.72);
-    box-shadow: 0 0 0 4px rgba(244, 162, 97, 0.12);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-primary) 22%, transparent);
   }
 
   select option,
   select optgroup {
-    color: var(--color-fg);
-    background: var(--color-bg);
+    color: var(--color-base-content);
+    background: var(--color-base-100);
   }
 
   select option:checked {
-    color: #1f1409;
-    background: var(--color-accent-2);
+    color: var(--color-primary-content);
+    background: var(--color-primary);
   }
 
   button:disabled {
@@ -96,11 +93,11 @@
   th,
   td {
     @apply px-[0.9rem] py-[0.8rem] text-left;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid var(--color-base-300);
   }
 
   th {
-    @apply bg-white/[0.05] text-[0.78rem] uppercase text-muted;
+    @apply bg-base-200 text-[0.78rem] uppercase text-muted;
     letter-spacing: 0.08em;
   }
 
@@ -114,62 +111,12 @@
 }
 
 @layer components {
-  /* ---- Buttons & chips ---- */
-  .primary {
-    @apply cursor-pointer rounded-full px-4 py-[0.7rem] font-black text-[#1f1409];
-    background: linear-gradient(135deg, var(--color-accent), var(--color-accent-2));
-  }
-
-  .secondary {
-    @apply cursor-pointer rounded-full border border-line bg-white/[0.08] px-4 py-[0.7rem] text-fg;
-  }
-
-  .ghost {
-    @apply cursor-pointer rounded-full bg-transparent px-4 py-[0.7rem] text-muted;
-  }
-
-  .file-button {
-    @apply inline-flex cursor-pointer items-center rounded-full border border-line bg-white/[0.08] px-4 py-[0.7rem] text-fg;
-  }
-
-  .file-button input {
-    @apply hidden;
-  }
-
-  .file-button.disabled {
-    @apply cursor-not-allowed opacity-[0.48];
-  }
-
-  .table-action {
-    @apply cursor-pointer rounded-full border border-line bg-white/[0.06] px-[0.65rem] py-[0.35rem] text-muted;
-  }
-
-  .pill {
-    @apply ml-[0.4rem] rounded-full border border-line bg-white/[0.07] px-[0.55rem] py-[0.3rem] text-[0.82rem] text-accent-2;
-  }
-
-  .result-badge {
-    @apply rounded-full px-[0.55rem] py-1 text-[0.85rem] font-extrabold;
-  }
-  .result-badge.kill {
-    @apply text-success;
-    background: rgba(141, 230, 177, 0.24);
-  }
-  .result-badge.wipe {
-    @apply text-danger;
-    background: rgba(255, 120, 120, 0.24);
-  }
-  .result-badge.unknown {
-    @apply text-info;
-    background: rgba(155, 199, 255, 0.24);
-  }
+  /* Commodity primitives (buttons, badges, alerts, tabs, form inputs) now come
+     from daisyUI, themed by the active light / dark theme. */
 
   /* ---- Helpers ---- */
   .muted {
     @apply text-muted;
-  }
-  .full {
-    @apply w-full;
   }
   .eyebrow {
     @apply text-[0.75rem] font-extrabold uppercase text-accent-2;
@@ -188,9 +135,6 @@
   /* ---- Surfaces ---- */
   .panel {
     @apply min-w-0 rounded-xl border border-line bg-panel p-4;
-  }
-  .slim-panel {
-    @apply p-[0.85rem];
   }
   .panel h2,
   .panel h3,
@@ -211,30 +155,6 @@
 
   .session-layout {
     @apply grid gap-4;
-  }
-
-  .notice {
-    @apply mt-[0.8rem] rounded-2xl border border-line px-[0.85rem] py-3;
-  }
-  .notice.error {
-    @apply text-danger;
-    border-color: rgba(255, 120, 120, 0.5);
-    background: rgba(255, 120, 120, 0.08);
-  }
-  .notice.success {
-    @apply text-success;
-    border-color: rgba(141, 230, 177, 0.5);
-    background: rgba(141, 230, 177, 0.08);
-  }
-  .notice.warning {
-    @apply text-warning;
-    border-color: rgba(248, 211, 111, 0.5);
-    background: rgba(248, 211, 111, 0.08);
-  }
-  .notice.info {
-    @apply text-info;
-    border-color: rgba(155, 199, 255, 0.5);
-    background: rgba(155, 199, 255, 0.08);
   }
 
   /* ---- Forms ---- */
@@ -269,8 +189,8 @@
 
   .dropzone {
     @apply mt-[0.8rem] grid min-h-[110px] cursor-pointer place-items-center gap-1 rounded-xl p-4 text-center;
-    border: 1px dashed rgba(255, 255, 255, 0.35);
-    background: rgba(255, 255, 255, 0.06);
+    border: 1px dashed var(--color-base-300);
+    background: var(--color-base-200);
   }
   .compact-dropzone {
     @apply mt-0 min-h-[88px];
@@ -291,7 +211,7 @@
   }
   .stat-list > div {
     @apply grid gap-[0.2rem] rounded-2xl border border-line p-[0.85rem];
-    background: rgba(255, 255, 255, 0.055);
+    background: var(--color-base-200);
   }
   .stat-list span {
     @apply text-muted;
@@ -343,7 +263,7 @@
 
   /* ---- Bars & simple charts ---- */
   .history-bar {
-    @apply h-[0.45rem] overflow-hidden rounded-full bg-white/[0.08];
+    @apply h-[0.45rem] overflow-hidden rounded-full bg-base-300;
   }
   .history-bar span {
     @apply block h-full rounded-[inherit];
@@ -351,7 +271,7 @@
   }
 
   .time-stack {
-    @apply flex h-3 overflow-hidden rounded-full bg-white/[0.08];
+    @apply flex h-3 overflow-hidden rounded-full bg-base-300;
   }
   .time-stack span {
     @apply block min-w-0;
@@ -360,7 +280,7 @@
     background: linear-gradient(90deg, var(--color-success), var(--color-accent-2));
   }
   .time-stack .downtime {
-    background: rgba(155, 199, 255, 0.72);
+    background: color-mix(in oklab, var(--color-info) 72%, transparent);
   }
 
   .trend-chart {
@@ -370,19 +290,19 @@
     @apply block w-full min-w-[520px];
   }
   .trend-axis {
-    stroke: rgba(255, 255, 255, 0.24);
+    stroke: color-mix(in oklab, var(--color-base-content) 24%, transparent);
     stroke-width: 1;
   }
   .trend-line {
     fill: none;
-    stroke: var(--color-accent-2);
+    stroke: var(--color-primary);
     stroke-width: 2.5;
     stroke-linecap: round;
     stroke-linejoin: round;
   }
   .trend-point {
-    fill: var(--color-accent);
-    stroke: var(--color-bg);
+    fill: var(--color-primary);
+    stroke: var(--color-base-100);
     stroke-width: 2;
   }
   .trend-label,
@@ -487,7 +407,7 @@
   .encounter-run-row:hover,
   .week-run-row:hover,
   .run-main:hover {
-    border-color: rgba(244, 162, 97, 0.48);
+    border-color: color-mix(in oklab, var(--color-primary) 48%, transparent);
   }
 
   .week-run-group {
@@ -518,9 +438,6 @@
   .encounter-list-name {
     @apply inline-flex min-w-0 flex-wrap items-center gap-[0.4rem];
   }
-  .encounter-list-name .pill {
-    @apply ml-0;
-  }
   .encounter-list-table th:not(:first-child),
   .encounter-list-table td:not(:first-child) {
     @apply whitespace-nowrap text-right;
@@ -546,7 +463,7 @@
 
   .run-trend-scroll {
     @apply overflow-x-auto rounded-xl border border-line p-[0.65rem];
-    background: rgba(0, 0, 0, 0.16);
+    background: var(--color-base-100);
   }
   .run-trend {
     @apply flex items-end gap-[0.35rem] min-h-[90px] w-max min-w-full;
@@ -560,17 +477,17 @@
     @apply block rounded-[inherit] w-[0.9rem] min-h-[0.55rem];
   }
   .trend-dot.kill span {
-    background: rgba(141, 230, 177, 0.24);
+    background: color-mix(in oklab, var(--color-success) 24%, transparent);
   }
   .trend-dot.wipe span {
-    background: rgba(255, 120, 120, 0.24);
+    background: color-mix(in oklab, var(--color-error) 24%, transparent);
   }
   .trend-dot.unknown span {
-    background: rgba(155, 199, 255, 0.24);
+    background: color-mix(in oklab, var(--color-info) 24%, transparent);
   }
   .trend-x-axis {
     @apply mt-[0.45rem] flex w-max min-w-full gap-[0.35rem] border-t pt-[0.45rem];
-    border-top-color: rgba(255, 255, 255, 0.08);
+    border-top-color: var(--color-base-300);
   }
   .trend-axis-tick {
     @apply text-center text-[0.72rem] leading-[1.15] text-muted;
@@ -583,8 +500,8 @@
     grid-template-columns: auto minmax(220px, 1fr) minmax(220px, auto) auto;
   }
   .run-card.selected {
-    border-color: rgba(247, 197, 125, 0.55);
-    background: rgba(244, 162, 97, 0.08);
+    border-color: color-mix(in oklab, var(--color-primary) 55%, transparent);
+    background: color-mix(in oklab, var(--color-primary) 8%, transparent);
   }
   .run-select input {
     @apply w-auto;
@@ -628,8 +545,8 @@
   .raid-night-list button:hover,
   .history-nav-group button.active,
   .raid-night-list button.active {
-    border-color: rgba(244, 162, 97, 0.45);
-    background: rgba(244, 162, 97, 0.1);
+    border-color: color-mix(in oklab, var(--color-primary) 45%, transparent);
+    background: color-mix(in oklab, var(--color-primary) 10%, transparent);
   }
   .history-nav-group button.active {
     @apply font-black text-accent-2;
@@ -669,7 +586,7 @@
 
   .selected-row,
   tbody tr:hover {
-    background: rgba(244, 162, 97, 0.08);
+    background: color-mix(in oklab, var(--color-primary) 8%, transparent);
   }
 
   /* ---- Weekly view ---- */
@@ -685,7 +602,7 @@
   }
   .week-compare-swap {
     @apply inline-flex min-h-[3rem] min-w-[3rem] cursor-pointer items-center justify-center rounded-[0.9rem] border border-line p-[0.8rem] text-accent-2;
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--color-base-200);
   }
   .week-archive-list {
     @apply grid gap-3;
@@ -696,16 +613,16 @@
     background: var(--color-surface);
   }
   .week-card.selected {
-    border-color: rgba(248, 211, 111, 0.42);
-    background: linear-gradient(180deg, rgba(248, 211, 111, 0.08), rgba(255, 255, 255, 0.04));
+    border-color: color-mix(in oklab, var(--color-warning) 42%, transparent);
+    background: linear-gradient(180deg, color-mix(in oklab, var(--color-warning) 8%, transparent), var(--color-base-200));
   }
   .week-card.compare-selected {
-    border-color: rgba(155, 199, 255, 0.38);
-    background: linear-gradient(180deg, rgba(155, 199, 255, 0.08), rgba(255, 255, 255, 0.04));
+    border-color: color-mix(in oklab, var(--color-info) 38%, transparent);
+    background: linear-gradient(180deg, color-mix(in oklab, var(--color-info) 8%, transparent), var(--color-base-200));
   }
   .week-card.selected.compare-selected {
-    border-color: rgba(247, 197, 125, 0.5);
-    background: linear-gradient(180deg, rgba(244, 162, 97, 0.1), rgba(255, 255, 255, 0.04));
+    border-color: color-mix(in oklab, var(--color-primary) 50%, transparent);
+    background: linear-gradient(180deg, color-mix(in oklab, var(--color-primary) 10%, transparent), var(--color-base-200));
   }
   .week-card-header {
     @apply flex items-start justify-between gap-3;
@@ -772,8 +689,8 @@
   }
   .week-player-encounter-row {
     @apply flex items-baseline justify-between gap-3 rounded-[0.55rem] px-[0.6rem] py-[0.45rem];
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--color-base-200);
+    background: var(--color-base-200);
   }
   .week-player-encounter-row span {
     @apply text-muted;
@@ -792,11 +709,11 @@
   }
   .time-section {
     @apply grid gap-[0.45rem] rounded-[0.6rem] border border-line p-[0.65rem];
-    background: rgba(255, 255, 255, 0.045);
+    background: var(--color-base-200);
   }
   .time-section.full-session {
     grid-column: 1 / -1;
-    background: rgba(244, 162, 97, 0.08);
+    background: color-mix(in oklab, var(--color-primary) 8%, transparent);
   }
   .time-section-header {
     @apply flex items-start justify-between gap-2;
@@ -826,7 +743,7 @@
   }
   .time-stats-inline div {
     @apply flex items-baseline justify-between gap-[0.55rem] rounded-[0.7rem] border border-line px-[0.7rem] py-[0.55rem];
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--color-base-200);
   }
   .time-stats-inline span,
   .time-stats-inline strong {
@@ -844,16 +761,6 @@
     @apply flex items-start justify-between gap-4;
   }
 
-  .view-toggle {
-    @apply inline-flex gap-1 rounded-full border border-line bg-white/[0.06] p-1;
-  }
-  .view-toggle button {
-    @apply cursor-pointer rounded-full bg-transparent px-[0.85rem] py-[0.45rem] text-muted;
-  }
-  .view-toggle button.active {
-    @apply bg-accent-2 font-black text-[#1f1409];
-  }
-
   /* ---- Timeline (session breakdown) ---- */
   .timeline-view {
     @apply grid gap-[0.7rem];
@@ -863,7 +770,7 @@
   }
   .timeline-scroll {
     @apply overflow-x-auto rounded-2xl border border-line;
-    background: rgba(0, 0, 0, 0.16);
+    background: var(--color-base-100);
   }
   .timeline-lines {
     @apply grid gap-[0.7rem] p-3 min-w-[860px];
@@ -880,8 +787,8 @@
   }
   .timeline-row-divider {
     @apply mx-auto mt-[0.2rem] flex w-max max-w-full items-center justify-center gap-2 rounded-full px-3 py-[0.35rem] text-[0.86rem] text-accent-2;
-    border: 1px dashed rgba(247, 197, 125, 0.55);
-    background: rgba(244, 162, 97, 0.08);
+    border: 1px dashed color-mix(in oklab, var(--color-primary) 55%, transparent);
+    background: color-mix(in oklab, var(--color-primary) 8%, transparent);
   }
   .timeline-row-divider strong {
     @apply text-fg;
@@ -897,19 +804,19 @@
     @apply text-fg;
   }
   .timeline-pull.kill {
-    border-color: rgba(141, 230, 177, 0.45);
+    border-color: color-mix(in oklab, var(--color-success) 45%, transparent);
   }
   .timeline-pull.kill::before {
     background: var(--color-success);
   }
   .timeline-pull.wipe {
-    border-color: rgba(255, 120, 120, 0.5);
+    border-color: color-mix(in oklab, var(--color-error) 50%, transparent);
   }
   .timeline-pull.wipe::before {
     background: var(--color-danger);
   }
   .timeline-pull.unknown {
-    border-color: rgba(155, 199, 255, 0.45);
+    border-color: color-mix(in oklab, var(--color-info) 45%, transparent);
   }
   .timeline-pull.unknown::before {
     background: var(--color-info);
@@ -919,7 +826,7 @@
     border-style: dashed;
   }
   .timeline-gap::before {
-    background: rgba(255, 255, 255, 0.35);
+    background: var(--color-base-300);
   }
   .timeline-gap .timeline-label,
   .timeline-gap .timeline-subline {
@@ -959,7 +866,7 @@
     background: var(--color-info);
   }
   .legend-dot.downtime {
-    background: rgba(255, 255, 255, 0.28);
+    background: color-mix(in oklab, var(--color-base-content) 28%, transparent);
   }
   .legend-dot.transition {
     background: var(--color-accent-2);
@@ -983,14 +890,14 @@
     overflow-wrap: normal;
   }
   .linear-timeline-row.kill {
-    border-color: rgba(141, 230, 177, 0.32);
+    border-color: color-mix(in oklab, var(--color-success) 32%, transparent);
   }
   .linear-timeline-row.wipe {
-    border-color: rgba(255, 120, 120, 0.34);
+    border-color: color-mix(in oklab, var(--color-error) 34%, transparent);
   }
   .linear-timeline-row.downtime {
     border-style: dashed;
-    background: rgba(255, 255, 255, 0.025);
+    background: var(--color-base-200);
   }
 
   /* ---- Tables (wrappers & wing summary) ---- */
@@ -1015,7 +922,7 @@
     border: 1px solid var(--color-line);
     border-bottom: 0;
     border-radius: 1rem 1rem 0 0;
-    background: rgba(244, 162, 97, 0.06);
+    background: color-mix(in oklab, var(--color-primary) 6%, transparent);
   }
   .wing-time-summary div {
     @apply grid min-w-0 gap-[0.1rem];

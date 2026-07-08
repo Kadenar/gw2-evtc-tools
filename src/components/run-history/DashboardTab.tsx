@@ -34,7 +34,7 @@ export function DashboardTab({
             <p className="muted">Latest {formatSessionScopeLabel(sessionTypeFilter).toLowerCase()} performance summary.</p>
           </div>
           <div className="inline-actions">
-            <button type="button" className="secondary" onClick={onViewHistory}>
+            <button type="button" className="btn btn-sm" onClick={onViewHistory}>
               View history
             </button>
           </div>

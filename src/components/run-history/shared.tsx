@@ -9,6 +9,7 @@ import {
   formatRunDate,
   formatRunSessionType,
   formatWing,
+  getResultBadgeClass,
   getResultClass,
   getRunSessionType,
   getRunStart,
@@ -39,7 +40,7 @@ export function HistoryFilterPanel({
         <div>
           <h3>{title}</h3>
         </div>
-        <button type="button" className="ghost" onClick={filterActions.resetFilters}>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={filterActions.resetFilters}>
           Reset
         </button>
       </div>
@@ -200,13 +201,13 @@ export function RunCard({
         <span className="run-date">{formatRunDate(run)}</span>
         <strong>
           {run.bossName}
-          {run.isCm ? <span className="pill">CM</span> : null}
-          <span className="pill">{formatRunSessionType(getRunSessionType(run))}</span>
+          {run.isCm ? <span className="badge badge-sm badge-outline ml-1">CM</span> : null}
+          <span className="badge badge-sm badge-outline ml-1">{formatRunSessionType(getRunSessionType(run))}</span>
         </strong>
         <span>{formatWing(run.wing)}</span>
       </button>
       <div className="run-metrics">
-        <span className={`result-badge ${getResultClass(run.success)}`}>{formatResult(run.success)}</span>
+        <span className={`badge ${getResultBadgeClass(run.success)}`}>{formatResult(run.success)}</span>
         <span>{formatSeconds(run.duration)}</span>
         <span>{formatDps(run.compDps)}</span>
       </div>
@@ -214,7 +215,7 @@ export function RunCard({
         <a href={run.permalink} target="_blank" rel="noreferrer">
           Open
         </a>
-        <button type="button" className="table-action" disabled={disabled} onClick={onDelete}>
+        <button type="button" className="btn btn-sm btn-ghost" disabled={disabled} onClick={onDelete}>
           Delete
         </button>
       </div>

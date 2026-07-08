@@ -157,7 +157,7 @@ export function SessionTimer() {
             rows={6}
           />
           <div className="inline-actions">
-            <button type="button" className="primary" disabled={!extractedLinks.length || isWorking} onClick={fetchLinks}>
+            <button type="button" className="btn btn-primary" disabled={!extractedLinks.length || isWorking} onClick={fetchLinks}>
               Fetch {extractedLinks.length || ""} link{extractedLinks.length === 1 ? "" : "s"}
             </button>
             <span className="muted">Detected {extractedLinks.length} link{extractedLinks.length === 1 ? "" : "s"}.</span>
@@ -197,14 +197,16 @@ export function SessionTimer() {
             <input type="checkbox" checked={anonymous} onChange={(event) => setAnonymous(event.target.checked)} />
             <span>Upload anonymously</span>
           </label>
-          <button type="button" className="primary" disabled={!uploadFiles.length || isWorking} onClick={uploadFilesToDpsReport}>
+          <button type="button" className="btn btn-primary" disabled={!uploadFiles.length || isWorking} onClick={uploadFilesToDpsReport}>
             Upload and calculate
           </button>
           {uploadFiles.length > 25 && (
-            <p className="notice warning">
-              dps.report rate-limits uploads. This app uploads sequentially, but 25+ files may still need a retry if the
-              server asks you to slow down.
-            </p>
+            <div role="alert" className="alert alert-warning mt-3">
+              <span>
+                dps.report rate-limits uploads. This app uploads sequentially, but 25+ files may still need a retry if the
+                server asks you to slow down.
+              </span>
+            </div>
           )}
         </div>
       </div>
@@ -222,16 +224,16 @@ export function SessionTimer() {
                 <option value="practice">Practice</option>
               </select>
             </label>
-            <button type="button" className="secondary" disabled={!logs.length} onClick={exportCsv}>
+            <button type="button" className="btn" disabled={!logs.length} onClick={exportCsv}>
               Export CSV
             </button>
-            <button type="button" className="secondary" disabled={!logs.length} onClick={exportJson}>
+            <button type="button" className="btn" disabled={!logs.length} onClick={exportJson}>
               Export JSON
             </button>
-            <button type="button" className="secondary" disabled={!logs.length || isWorking} onClick={saveToRunHistory}>
+            <button type="button" className="btn" disabled={!logs.length || isWorking} onClick={saveToRunHistory}>
               Save to Run History
             </button>
-            <button type="button" className="ghost" disabled={!logs.length} onClick={clearAll}>
+            <button type="button" className="btn btn-ghost" disabled={!logs.length} onClick={clearAll}>
               Clear
             </button>
           </div>
@@ -246,7 +248,7 @@ export function SessionTimer() {
                 <span className="eyebrow">Full</span>
                 <h4>Full session</h4>
               </div>
-              <span className="pill">{summary.logs.length} logs</span>
+              <span className="badge badge-outline">{summary.logs.length} logs</span>
             </div>
             <div className="time-stats">
               <div>
@@ -279,19 +281,21 @@ export function SessionTimer() {
           <div>
             <h3>Session breakdown</h3>
           </div>
-          <div className="view-toggle" role="group" aria-label="Session breakdown view">
+          <div role="tablist" className="tabs tabs-box" aria-label="Session breakdown view">
             <button
               type="button"
-              className={breakdownView === "timeline" ? "active" : ""}
-              aria-pressed={breakdownView === "timeline"}
+              role="tab"
+              className={`tab ${breakdownView === "timeline" ? "tab-active" : ""}`}
+              aria-selected={breakdownView === "timeline"}
               onClick={() => setBreakdownView("timeline")}
             >
               Timeline
             </button>
             <button
               type="button"
-              className={breakdownView === "details" ? "active" : ""}
-              aria-pressed={breakdownView === "details"}
+              role="tab"
+              className={`tab ${breakdownView === "details" ? "tab-active" : ""}`}
+              aria-selected={breakdownView === "details"}
               onClick={() => setBreakdownView("details")}
             >
               Details
@@ -403,7 +407,7 @@ function WingDetails({ logDetailGroups }: { logDetailGroups: ReturnType<typeof s
         <section className="log-group" key={wing.label}>
           <div className="log-group-heading">
             <h4>{wing.label}</h4>
-            <span className="pill">{wing.logs.length} logs</span>
+            <span className="badge badge-outline">{wing.logs.length} logs</span>
           </div>
           <div className="wing-time-summary" aria-label={`${wing.label} timing summary`}>
             <div>
@@ -444,7 +448,7 @@ function WingDetails({ logDetailGroups }: { logDetailGroups: ReturnType<typeof s
                     <td>{formatDateTime(log.start)}</td>
                     <td>
                       {log.bossName}
-                      {log.isCm ? <span className="pill">CM</span> : null}
+                      {log.isCm ? <span className="badge badge-sm badge-outline ml-1">CM</span> : null}
                     </td>
                     <td>{getPullResult(log)}</td>
                     <td>{formatSeconds(log.duration)}</td>

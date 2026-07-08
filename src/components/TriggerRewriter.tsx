@@ -98,8 +98,8 @@ export function TriggerRewriter() {
           <small className="text-muted">Supports raw EVTC and zipped ZEVTC-style archives.</small>
         </label>
 
-        {error && <div className="notice error">{error}</div>}
-        {message && <div className="notice success">{message}</div>}
+        {error && <div role="alert" className="alert alert-error mt-3">{error}</div>}
+        {message && <div role="alert" className="alert alert-success mt-3">{message}</div>}
       </div>
 
       <div className="panel">
@@ -134,12 +134,14 @@ export function TriggerRewriter() {
             </div>
 
             {canRewrite ? (
-              <div className="notice info">
-                Rewrite target: <strong>{targetBossLabel}</strong> ({targetBossId})
+              <div role="alert" className="alert alert-info mt-3">
+                <span>
+                  Rewrite target: <strong>{targetBossLabel}</strong> ({targetBossId})
+                </span>
               </div>
             ) : (
-              <div className="notice warning">
-                Unsupported source log. Upload Gorseval (15429) or Twisted Castle (16247).
+              <div role="alert" className="alert alert-warning mt-3">
+                <span>Unsupported source log. Upload Gorseval (15429) or Twisted Castle (16247).</span>
               </div>
             )}
 
@@ -162,22 +164,17 @@ export function TriggerRewriter() {
               <div className="mt-[0.6rem] flex flex-wrap gap-[0.45rem]">
                 {knownCandidates.length ? (
                   knownCandidates.map((candidate) => (
-                    <span
-                      className="rounded-full border border-line bg-white/[0.07] px-[0.55rem] py-[0.3rem] text-[0.82rem] text-muted"
-                      key={`${candidate.offset}-${candidate.bossId}`}
-                    >
+                    <span className="badge badge-outline" key={`${candidate.offset}-${candidate.bossId}`}>
                       0x{candidate.offset.toString(16).toUpperCase()}: {getEncounterName(candidate.bossId)} ({candidate.bossId})
                     </span>
                   ))
                 ) : (
-                  <span className="rounded-full border border-line bg-white/[0.07] px-[0.55rem] py-[0.3rem] text-[0.82rem] text-muted">
-                    No known boss ids found in the first 32 bytes.
-                  </span>
+                  <span className="badge badge-outline">No known boss ids found in the first 32 bytes.</span>
                 )}
               </div>
             </details>
 
-            <button type="button" className="primary full" disabled={!canRewrite} onClick={rewriteAndDownload}>
+            <button type="button" className="btn btn-primary btn-block" disabled={!canRewrite} onClick={rewriteAndDownload}>
               Download rewritten log
             </button>
           </>

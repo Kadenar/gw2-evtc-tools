@@ -267,9 +267,16 @@ export function WeeksTab({
 
         {selectedWing != null && (selectedWingDetail || compareWingDetail) ? (
           <>
-            <div className="view-toggle">
+            <div role="tablist" className="tabs tabs-box">
               {(["overview", "encounters", "downtime", "players"] as const).map((tab) => (
-                <button type="button" className={detailTab === tab ? "active" : ""} onClick={() => setDetailTab(tab)} key={tab}>
+                <button
+                  type="button"
+                  role="tab"
+                  className={`tab ${detailTab === tab ? "tab-active" : ""}`}
+                  aria-selected={detailTab === tab}
+                  onClick={() => setDetailTab(tab)}
+                  key={tab}
+                >
                   {formatDetailTabLabel(tab)}
                 </button>
               ))}
@@ -424,7 +431,7 @@ function WingEncounterPanel({
             <tr onClick={() => onSelectEncounter(row.encounterKey)} key={row.encounterKey}>
               <td>
                 {row.bossName}
-                {row.isCm ? <span className="pill">CM</span> : null}
+                {row.isCm ? <span className="badge badge-sm badge-outline ml-1">CM</span> : null}
               </td>
               <td>{formatEncounterRecord(row.current)}</td>
               <td>{formatEncounterBest(row.current)}</td>
@@ -582,7 +589,7 @@ function WeekSummaryCard({
           <h4>{week.runs} saved runs</h4>
         </div>
         <div className="week-card-header-actions">
-          <span className="pill">{formatPercent(week.killRate)} kill rate</span>
+          <span className="badge badge-outline">{formatPercent(week.killRate)} kill rate</span>
           {isSelected ? <span className="week-card-selected-label">Selected</span> : null}
           {isCompare ? <span className="week-card-selected-label">Compare</span> : null}
         </div>

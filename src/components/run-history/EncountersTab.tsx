@@ -84,7 +84,7 @@ function EncounterListPanel({
           <section className="week-run-group" key={group.label}>
             <div className="week-run-group-header">
               <h5>{group.label}</h5>
-              <span className="pill">
+              <span className="badge badge-outline">
                 {group.encounters.length} encounter{group.encounters.length === 1 ? "" : "s"}
               </span>
             </div>
@@ -118,7 +118,7 @@ function EncounterListPanel({
                         <td>
                           <span className="encounter-list-name">
                             <span>{encounter.bossName}</span>
-                            {encounter.isCm ? <span className="pill">CM</span> : null}
+                            {encounter.isCm ? <span className="badge badge-sm badge-outline">CM</span> : null}
                           </span>
                         </td>
                         <td>{latest ? formatSeconds(latest.duration) : "N/A"}</td>
@@ -199,7 +199,7 @@ function EncounterDetail({
         <div>
           <h3>
             {encounter.bossName}
-            {encounter.isCm ? <span className="pill">CM</span> : null}
+            {encounter.isCm ? <span className="badge badge-sm badge-outline ml-1">CM</span> : null}
           </h3>
           <p className="muted">
             {formatWing(encounter.wing)} - {encounter.runs} runs - {formatPercent(encounter.killRate)} kill rate
