@@ -1,5 +1,6 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { downloadBlob } from "../lib/format";
+import { fetchBundledRunHistoryBackup, getBundledRunHistorySources, getSingleBundledRunHistorySource } from "../lib/bundledRunHistory";
 import { fetchEncounterPhaseData } from "../lib/dpsReport";
 import {
   ImportMode,
@@ -40,6 +41,8 @@ const HISTORY_VIEWS: Array<{ id: HistoryView; label: string; group: "Primary" | 
 ];
 
 export function RunHistory() {
+  const bundledRunHistorySource = getSingleBundledRunHistorySource();
+  const bundledRunHistoryFileCount = getBundledRunHistorySources().length;
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isWorking, setIsWorking] = useState(false);
@@ -230,18 +233,37 @@ export function RunHistory() {
     setIsWorking(true);
     try {
       const parsed = JSON.parse(await file.text()) as unknown;
-      const result = await importRunHistoryBackup(parsed, importMode);
-      await loadRuns();
-      setStatus(
-        importMode === "replace"
-          ? `Restored ${result.saved} run${result.saved === 1 ? "" : "s"}.`
-          : `Imported ${result.saved} new and updated ${result.updated} existing run${result.updated === 1 ? "" : "s"}.`,
-      );
+      await importParsedBackup(parsed, importMode);
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Could not import backup.");
     } finally {
       setIsWorking(false);
     }
+  }
+
+  async function importBundledBackup() {
+    if (!bundledRunHistorySource) return;
+
+    setIsWorking(true);
+    try {
+      const parsed = await fetchBundledRunHistoryBackup(bundledRunHistorySource);
+      await importParsedBackup(parsed, "replace");
+      setStatus(`Loaded bundled backup from ${bundledRunHistorySource.name}.`);
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Could not load bundled backup.");
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
+  async function importParsedBackup(parsed: unknown, mode: ImportMode) {
+    const result = await importRunHistoryBackup(parsed, mode);
+    await loadRuns();
+    setStatus(
+      mode === "replace"
+        ? `Restored ${result.saved} run${result.saved === 1 ? "" : "s"}.`
+        : `Imported ${result.saved} new and updated ${result.updated} existing run${result.updated === 1 ? "" : "s"}.`,
+    );
   }
 
   async function deleteRun(id: string) {
@@ -429,7 +451,22 @@ export function RunHistory() {
       <div className="history-view">
         {status ? <p className="status-text">{status}</p> : null}
         {isLoading ? <div className="panel"><p className="muted">Loading run history...</p></div> : null}
-        {!isLoading && !hasRuns ? <div className="panel"><p className="muted">No saved runs yet. Load reports in the session timer, then save them here.</p></div> : null}
+        {!isLoading && !hasRuns ? (
+          <div className="panel">
+            <p className="muted">No saved runs yet. Load reports in the session timer, then save them here.</p>
+            {bundledRunHistorySource ? (
+              <div className="inline-actions">
+                <button type="button" className="secondary" disabled={isWorking} onClick={() => void importBundledBackup()}>
+                  Load bundled backup
+                </button>
+                <span className="muted">{bundledRunHistorySource.name}</span>
+              </div>
+            ) : null}
+            {bundledRunHistoryFileCount > 1 ? (
+              <p className="muted">Bundled backup import is unavailable because `src/run-data` contains more than one JSON file.</p>
+            ) : null}
+          </div>
+        ) : null}
         {!isLoading && hasRuns ? renderActiveView() : null}
       </div>
     </section>
