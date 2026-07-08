@@ -6,23 +6,17 @@ import { StatCard } from "./shared";
 
 export function DashboardTab({
   sessionTypeFilter,
-  isWorking,
   latestNight,
   previousNight,
   wingSummaries,
   raidNights,
-  records,
-  onImportBackup,
   onViewHistory,
 }: {
   sessionTypeFilter: SessionTypeFilter;
-  isWorking: boolean;
   latestNight: RaidNightSummary | null;
   previousNight: RaidNightSummary | null;
   wingSummaries: WingHistorySummary[];
   raidNights: RaidNightSummary[];
-  records: RecordHighlight[];
-  onImportBackup: (event: ChangeEvent<HTMLInputElement>) => void;
   onViewHistory: () => void;
 }) {
   const latestLabel = sessionTypeFilter === "practice" ? "Latest Practice" : sessionTypeFilter === "all" ? "Latest Run" : "Latest Full Clear";
@@ -40,10 +34,6 @@ export function DashboardTab({
             <p className="muted">Latest {formatSessionScopeLabel(sessionTypeFilter).toLowerCase()} performance summary.</p>
           </div>
           <div className="inline-actions">
-            <label className={`secondary file-button ${isWorking ? "disabled" : ""}`}>
-              Import backup
-              <input type="file" accept="application/json,.json" disabled={isWorking} onChange={onImportBackup} />
-            </label>
             <button type="button" className="secondary" onClick={onViewHistory}>
               View history
             </button>
@@ -71,8 +61,6 @@ export function DashboardTab({
         <RecentRaidNights nights={raidNights.slice(0, 4)} />
         <CurrentBreakdown title={breakdownLabel} night={latestNight} />
       </div>
-
-      <RecordPanel records={records} />
     </>
   );
 }
@@ -207,32 +195,6 @@ function TrendChart({ title, nights }: { title: string; nights: RaidNightSummary
       ) : (
         <p className="muted">Save more runs to generate a trend.</p>
       )}
-    </div>
-  );
-}
-
-function RecordPanel({ records }: { records: RecordHighlight[] }) {
-  return (
-    <div className="panel">
-      <div className="section-heading">
-        <div>
-          <h3>Records</h3>
-        </div>
-      </div>
-      <div className="record-grid">
-        {records.map((record) => (
-          <article className="record-card" key={record.label}>
-            <span>{record.label}</span>
-            <strong>{record.value}</strong>
-            <small>{record.detail}</small>
-            {record.run ? (
-              <a href={record.run.permalink} target="_blank" rel="noreferrer">
-                Open report
-              </a>
-            ) : null}
-          </article>
-        ))}
-      </div>
     </div>
   );
 }

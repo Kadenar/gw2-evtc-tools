@@ -227,57 +227,6 @@ export function summarizeRunSet(runs: RunRecord[]): RunStats {
   };
 }
 
-export function buildRecordHighlights(runs: RunRecord[], encounters: EncounterSummary[]): RecordHighlight[] {
-  const fastestKill = minBy(
-    runs.filter((run) => run.success === true && run.duration > 0),
-    (run) => run.duration,
-  );
-  const highestDps = maxBy(
-    runs.filter((run) => run.compDps != null),
-    (run) => run.compDps ?? 0,
-  );
-  const longestWipe = maxBy(
-    runs.filter((run) => run.success === false && run.duration > 0),
-    (run) => run.duration,
-  );
-  const mostPulled = maxBy(encounters, (encounter) => encounter.runs);
-  const lowestKillRate = minBy(
-    encounters.filter((encounter) => encounter.kills + encounter.wipes >= 2 && encounter.killRate != null),
-    (encounter) => encounter.killRate ?? 1,
-  );
-
-  return [
-    {
-      label: "Fastest kill",
-      value: fastestKill ? formatSeconds(fastestKill.duration) : "N/A",
-      detail: fastestKill ? fastestKill.bossName : "No successful pulls yet",
-      run: fastestKill,
-    },
-    {
-      label: "Highest DPS",
-      value: highestDps ? formatDps(highestDps.compDps) : "N/A",
-      detail: highestDps ? highestDps.bossName : "No DPS data yet",
-      run: highestDps,
-    },
-    {
-      label: "Longest wipe",
-      value: longestWipe ? formatSeconds(longestWipe.duration) : "N/A",
-      detail: longestWipe ? longestWipe.bossName : "No failed pulls yet",
-      run: longestWipe,
-    },
-    {
-      label: "Most pulled",
-      value: mostPulled ? `${mostPulled.runs} runs` : "N/A",
-      detail: mostPulled ? mostPulled.bossName : "No encounter data",
-    },
-    {
-      label: "Lowest kill rate",
-      value: lowestKillRate ? formatPercent(lowestKillRate.killRate) : "N/A",
-      detail: lowestKillRate ? lowestKillRate.bossName : "Needs at least 2 decided pulls",
-    },
-  ];
-}
-
 export function buildInsights(runs: RunRecord[], weeks: WeekSummary[], encounters: EncounterSummary[]): string[] {
   if (!runs.length) return [];
 

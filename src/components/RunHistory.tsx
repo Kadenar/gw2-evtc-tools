@@ -25,7 +25,6 @@ import type { HistoryView, SessionTypeFilter } from "./run-history/types";
 import { useRunHistoryFilters } from "./run-history/useRunHistoryFilters";
 import {
   buildRaidNightSummaries,
-  buildRecordHighlights,
   buildWingHistorySummaries,
   runsToCsv,
   summarizeEncounters,
@@ -63,7 +62,6 @@ export function RunHistory() {
   const wingSummaries = useMemo(() => buildWingHistorySummaries(scopedRuns), [scopedRuns]);
   const encounterSummaries = useMemo(() => summarizeEncounters(scopedRuns), [scopedRuns]);
   const filteredEncounterSummaries = useMemo(() => summarizeEncounters(filteredRuns), [filteredRuns]);
-  const records = useMemo(() => buildRecordHighlights(scopedRuns, encounterSummaries), [encounterSummaries, scopedRuns]);
   const latestNight = raidNights[0] ?? null;
   const previousNight = raidNights[1] ?? null;
   const selectedNight = filteredRaidNights.find((night) => night.key === selectedNightKey) ?? filteredRaidNights[0] ?? raidNights[0] ?? null;
@@ -328,13 +326,10 @@ export function RunHistory() {
         return (
           <DashboardTab
             sessionTypeFilter={filters.sessionTypeFilter}
-            isWorking={isWorking}
             latestNight={latestNight}
             previousNight={previousNight}
             wingSummaries={wingSummaries}
             raidNights={raidNights}
-            records={records}
-            onImportBackup={importBackup}
             onViewHistory={() => setView("runs")}
           />
         );
