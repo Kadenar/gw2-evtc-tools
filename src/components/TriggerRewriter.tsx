@@ -75,12 +75,17 @@ export function TriggerRewriter() {
   }
 
   return (
-    <section className="tool-grid">
+    <section className="grid gap-4 grid-cols-[minmax(0,0.95fr)_minmax(360px,1.05fr)] max-nav:grid-cols-1">
       <div className="panel">
-        <h2>Trigger ID Rewriter</h2>
+        <h2>ID Rewriter</h2>
+        <p>
+          Missing Sabetha or Xera logs? Your data is probably in the previous log. A separate one was not generated because your entire squad was never out of combat.
+        </p>
+        <p>
+          Upload your Gorseval or Twisted Castle log below and we will try to generate your missing log.
+        </p>
         <p>
           Supports only <strong>Gorseval -&gt; Sabetha</strong> and <strong>Twisted Castle -&gt; Xera</strong>.
-          Rewrites happen locally in your browser.
         </p>
 
         <label className="dropzone">
@@ -90,7 +95,7 @@ export function TriggerRewriter() {
             onChange={(event) => void handleFile(event.target.files?.[0] ?? null)}
           />
           <span>Choose EVTC/ZEVTC file</span>
-          <small>Supports raw EVTC and zipped ZEVTC-style archives.</small>
+          <small className="text-muted">Supports raw EVTC and zipped ZEVTC-style archives.</small>
         </label>
 
         {error && <div className="notice error">{error}</div>}
@@ -100,7 +105,7 @@ export function TriggerRewriter() {
       <div className="panel">
         <h3>Rewrite settings</h3>
         {!loaded ? (
-          <p className="muted">Upload a file to inspect its header.</p>
+          <p className="text-muted">Upload a file to inspect its header.</p>
         ) : (
           <>
             <div className="stat-list">
@@ -138,8 +143,8 @@ export function TriggerRewriter() {
               </div>
             )}
 
-            <details className="advanced">
-              <summary>Advanced header details</summary>
+            <details className="my-4 rounded-2xl border border-line bg-black/[0.16] p-[0.85rem]">
+              <summary className="cursor-pointer font-extrabold">Advanced header details</summary>
               <label className="field compact">
                 <span>Manual boss-id offset</span>
                 <input
@@ -150,19 +155,24 @@ export function TriggerRewriter() {
                   onChange={(event) => setManualOffset(Number(event.target.value))}
                 />
               </label>
-              <label className="check-row">
+              <label className="my-[0.8rem] flex items-center gap-[0.55rem] text-muted">
                 <input type="checkbox" checked={preserveName} onChange={(event) => setPreserveName(event.target.checked)} />
                 <span>Preserve original filename on download</span>
               </label>
-              <div className="candidate-list">
+              <div className="mt-[0.6rem] flex flex-wrap gap-[0.45rem]">
                 {knownCandidates.length ? (
                   knownCandidates.map((candidate) => (
-                    <span key={`${candidate.offset}-${candidate.bossId}`}>
+                    <span
+                      className="rounded-full border border-line bg-white/[0.07] px-[0.55rem] py-[0.3rem] text-[0.82rem] text-muted"
+                      key={`${candidate.offset}-${candidate.bossId}`}
+                    >
                       0x{candidate.offset.toString(16).toUpperCase()}: {getEncounterName(candidate.bossId)} ({candidate.bossId})
                     </span>
                   ))
                 ) : (
-                  <span>No known boss ids found in the first 32 bytes.</span>
+                  <span className="rounded-full border border-line bg-white/[0.07] px-[0.55rem] py-[0.3rem] text-[0.82rem] text-muted">
+                    No known boss ids found in the first 32 bytes.
+                  </span>
                 )}
               </div>
             </details>
