@@ -1,6 +1,6 @@
 import type { ChangeEvent } from "react";
 import { formatSeconds } from "../../lib/format";
-import type { RaidNightSummary, RecordHighlight, SessionTypeFilter, WingHistorySummary } from "./types";
+import type { RaidNightSummary, SessionTypeFilter, WingHistorySummary } from "./types";
 import { buildTimelineRows, formatRunSessionType, formatSessionScopeLabel, formatWingSet } from "./utils";
 import { StatCard } from "./shared";
 
