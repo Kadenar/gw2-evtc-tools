@@ -49,13 +49,6 @@ export type EncounterSummary = RunStats & {
   runsList: RunRecord[];
 };
 
-export type RecordHighlight = {
-  label: string;
-  value: string;
-  detail: string;
-  run?: RunRecord;
-};
-
 export type RaidNightSummary = {
   key: string;
   label: string;

@@ -2,7 +2,7 @@ import { ENCOUNTER_BY_ID, RAID_ENCOUNTERS } from "../../data/encounters";
 import { formatSeconds } from "../../lib/format";
 import type { RunRecord, RunSessionType, WeekSummary } from "../../lib/runHistory";
 import { summarizeRunsByWeek } from "../../lib/runHistory";
-import type { CmFilter, EncounterSummary, RecordHighlight, ResultFilter, RunStats, SessionTypeFilter, SortMode, RaidNightSummary, WingHistorySummary } from "./types";
+import type { CmFilter, EncounterSummary, ResultFilter, RunStats, SessionTypeFilter, SortMode, RaidNightSummary, WingHistorySummary } from "./types";
 
 type WingSessionSummary = {
   key: string;
