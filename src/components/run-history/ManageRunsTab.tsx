@@ -50,10 +50,10 @@ export function ManageRunsTab({
             </p>
           </div>
           <div className="inline-actions">
-            <button type="button" className="secondary" disabled={!sortedRuns.length} onClick={onToggleVisibleSelection}>
+            <button type="button" className="btn btn-sm" disabled={!sortedRuns.length} onClick={onToggleVisibleSelection}>
               {allVisibleSelected ? "Unselect visible" : "Select visible"}
             </button>
-            <button type="button" className="ghost" disabled={!selectedRunIds.length || isWorking} onClick={onDeleteSelected}>
+            <button type="button" className="btn btn-sm btn-ghost" disabled={!selectedRunIds.length || isWorking} onClick={onDeleteSelected}>
               Delete selected
             </button>
           </div>

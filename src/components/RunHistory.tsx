@@ -412,14 +412,14 @@ export function RunHistory() {
             </select>
           </label>
           <div className="history-sidebar-actions">
-            <button type="button" className="secondary" disabled={!hasRuns || isWorking} onClick={exportBackup}>
+            <button type="button" className="btn btn-block" disabled={!hasRuns || isWorking} onClick={exportBackup}>
               Export backup
             </button>
-            <label className={`secondary file-button ${isWorking ? "disabled" : ""}`}>
+            <label className={`btn btn-block ${isWorking ? "btn-disabled" : ""}`}>
               Import backup
-              <input type="file" accept="application/json,.json" disabled={isWorking} onChange={importBackup} />
+              <input type="file" className="hidden" accept="application/json,.json" disabled={isWorking} onChange={importBackup} />
             </label>
-            <button type="button" className="ghost" disabled={!hasRuns || isWorking} onClick={clearHistory}>
+            <button type="button" className="btn btn-ghost btn-block" disabled={!hasRuns || isWorking} onClick={clearHistory}>
               Clear all
             </button>
           </div>
@@ -434,7 +434,7 @@ export function RunHistory() {
             <p className="muted">No saved runs yet. Load reports in the session timer, then save them here.</p>
             {bundledRunHistorySource ? (
               <div className="inline-actions">
-                <button type="button" className="secondary" disabled={isWorking} onClick={() => void importBundledBackup()}>
+                <button type="button" className="btn" disabled={isWorking} onClick={() => void importBundledBackup()}>
                   Load bundled backup
                 </button>
                 <span className="muted">{bundledRunHistorySource.name}</span>

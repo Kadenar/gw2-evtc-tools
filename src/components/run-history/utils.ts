@@ -588,6 +588,12 @@ export function getResultClass(success: boolean | null): string {
   return success ? "kill" : "wipe";
 }
 
+/** daisyUI badge tone for a run result. */
+export function getResultBadgeClass(success: boolean | null): string {
+  if (success == null) return "badge-info";
+  return success ? "badge-success" : "badge-error";
+}
+
 export function formatPercent(value: number | null): string {
   if (value == null) return "N/A";
   return `${Math.round(value * 100)}%`;
