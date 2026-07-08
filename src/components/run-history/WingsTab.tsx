@@ -1,9 +1,15 @@
 import { formatSeconds } from "../../lib/format";
 import type { WingHistorySummary } from "./types";
-import { formatCalendarDate, maxBy, minBy } from "./utils";
+import { formatCalendarDate } from "./utils";
 import { StatCard } from "./shared";
 
 export function WingsTab({ wingSummaries }: { wingSummaries: WingHistorySummary[] }) {
+  const bestTimes = wingSummaries
+    .map((wing) => wing.bestTime)
+    .filter((bestTime): bestTime is number => bestTime != null && bestTime > 0);
+  const summedBestTime = bestTimes.length ? bestTimes.reduce((sum, bestTime) => sum + bestTime, 0) : null;
+  const missingBestTimes = wingSummaries.length - bestTimes.length;
+
   return (
     <>
       <div className="panel">
@@ -11,6 +17,19 @@ export function WingsTab({ wingSummaries }: { wingSummaries: WingHistorySummary[
           <div>
             <h3>Wing breakdown</h3>
           </div>
+        </div>
+        <div className="history-stat-grid">
+          <StatCard
+            label="Sum of best"
+            value={summedBestTime == null ? "N/A" : formatSeconds(summedBestTime)}
+            detail={
+              !wingSummaries.length
+                ? "No wing data"
+                : missingBestTimes > 0
+                  ? `${bestTimes.length} wing${bestTimes.length === 1 ? "" : "s"} included, ${missingBestTimes} missing full-clear PB`
+                  : ""
+            }
+          />
         </div>
         <div className="table-wrap">
           <table>
