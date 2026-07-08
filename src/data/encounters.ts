@@ -3,7 +3,7 @@ export type Encounter = {
   code: string;
   name: string;
   wing: number | null;
-  kind?: "boss" | "trash" | "fractal" | "strike" | "golem" | "other";
+  kind?: "boss" | "trash" | "fractal" | "strike";
 };
 
 export const RAID_ENCOUNTERS: Encounter[] = [
@@ -60,20 +60,7 @@ export const RAID_ENCOUNTERS: Encounter[] = [
   { id: 26712, code: "ura", name: "Ura, the Steamshrieker", wing: 8, kind: "boss" },
 ];
 
-export const KNOWN_ENCOUNTERS: Encounter[] = [
-  ...RAID_ENCOUNTERS,
-  { id: 27124, code: "kela", name: "Kela, Seneschal of Waves", wing: null, kind: "other" },
-  { id: 16199, code: "golem", name: "Standard Kitty Golem", wing: null, kind: "golem" },
-  { id: 19645, code: "golem", name: "Medium Kitty Golem", wing: null, kind: "golem" },
-  { id: 19676, code: "golem", name: "Large Kitty Golem", wing: null, kind: "golem" },
-  { id: 16178, code: "golem", name: "Massive Kitty Golem 1M", wing: null, kind: "golem" },
-  { id: 16202, code: "golem", name: "Massive Kitty Golem 4M", wing: null, kind: "golem" },
-  { id: 16169, code: "golem", name: "Massive Kitty Golem 10M", wing: null, kind: "golem" },
-  { id: 16177, code: "golem", name: "Average Kitty Golem", wing: null, kind: "golem" },
-  { id: 16198, code: "golem", name: "Vital Kitty Golem", wing: null, kind: "golem" },
-  { id: 16174, code: "golem", name: "Condition Kitty Golem", wing: null, kind: "golem" },
-  { id: 16176, code: "golem", name: "Power Kitty Golem", wing: null, kind: "golem" },
-];
+export const KNOWN_ENCOUNTERS: Encounter[] = [...RAID_ENCOUNTERS];
 
 export const ENCOUNTER_BY_ID = new Map(KNOWN_ENCOUNTERS.map((encounter) => [encounter.id, encounter]));
 const RAID_ENCOUNTER_ORDER_BY_ID = new Map(RAID_ENCOUNTERS.map((encounter, index) => [encounter.id, index]));
