@@ -203,7 +203,7 @@ button:disabled {
 }
 
 .compact-dropzone {
-  min-height: 110px;
+  min-height: 88px;
   margin-top: 0;
 }
 
@@ -232,6 +232,16 @@ button:disabled {
   max-width: 220px;
 }
 
+.upload-domain-field {
+  max-width: 240px;
+  margin: 0 0 0.75rem;
+}
+
+.upload-domain-field select {
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.7rem;
+}
+
 input,
 select,
 textarea {
@@ -247,6 +257,10 @@ textarea {
 textarea {
   resize: vertical;
   min-height: 180px;
+}
+
+.session-links-input {
+  min-height: 120px;
 }
 
 input:focus,
@@ -277,6 +291,10 @@ textarea:focus {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.55rem;
   margin-top: 0.65rem;
+}
+
+.time-sections.single-summary {
+  grid-template-columns: 1fr;
 }
 
 .time-section {
@@ -337,6 +355,25 @@ textarea:focus {
   gap: 0.6rem;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.compact-status {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.45rem;
+}
+
+.status-text {
+  color: var(--info);
+  font-size: 0.9rem;
+}
+
+.warning-text {
+  color: var(--warning);
+}
+
+.error-text {
+  color: var(--danger);
 }
 
 .settings-row {
@@ -468,6 +505,36 @@ textarea:focus {
   font-size: 1rem;
 }
 
+.wing-time-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem 0.55rem;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: 1rem 1rem 0 0;
+  padding: 0.7rem 0.85rem;
+  background: rgba(244, 162, 97, 0.06);
+}
+
+.wing-time-summary div {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.wing-time-summary span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.wing-time-summary strong {
+  overflow-wrap: anywhere;
+}
+
+.wing-time-summary + .table-wrap {
+  border-radius: 0 0 1rem 1rem;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -511,7 +578,8 @@ tr:last-child td {
   }
 
   .time-stats,
-  .full-session .time-stats {
+  .full-session .time-stats,
+  .wing-time-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

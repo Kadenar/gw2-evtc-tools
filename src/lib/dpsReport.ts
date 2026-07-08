@@ -98,7 +98,17 @@ export function extractPermalinks(text: string): string[] {
   return Array.from(new Set(normalized));
 }
 
-export async function fetchUploadMetadata(permalink: string, domain: DpsReportDomain): Promise<DpsReportMetadata> {
+function getMetadataDomain(permalink: string): DpsReportDomain {
+  try {
+    const hostname = new URL(permalink).hostname.toLowerCase();
+    return hostname === "b.dps.report" ? "https://b.dps.report" : "https://dps.report";
+  } catch {
+    return "https://dps.report";
+  }
+}
+
+export async function fetchUploadMetadata(permalink: string): Promise<DpsReportMetadata> {
+  const domain = getMetadataDomain(permalink);
   const url = new URL("/getUploadMetadata", domain);
   url.searchParams.set("permalink", permalink);
 
@@ -115,15 +125,12 @@ export async function fetchUploadMetadata(permalink: string, domain: DpsReportDo
 export async function uploadLogToDpsReport(
   file: File,
   domain: DpsReportDomain,
-  options: { anonymous: boolean; userToken?: string },
+  options: { anonymous: boolean },
 ): Promise<DpsReportMetadata> {
   const url = new URL("/uploadContent", domain);
   url.searchParams.set("json", "1");
   url.searchParams.set("generator", "ei");
   url.searchParams.set("anonymous", String(options.anonymous));
-  if (options.userToken?.trim()) {
-    url.searchParams.set("userToken", options.userToken.trim());
-  }
 
   const formData = new FormData();
   formData.append("file", file);
