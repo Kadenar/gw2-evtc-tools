@@ -186,6 +186,7 @@ function EncounterDetail({
   const runs = [...encounter.runsList].sort((a, b) => a.start - b.start);
   const maxDuration = Math.max(...runs.map((run) => run.duration), 1);
   const phaseSummaries = summarizeEncounterPhases(runs);
+  const showAverageBossDps = new Set(runs.map((run) => run.weekKey)).size > 1;
   const [isRunListExpanded, setIsRunListExpanded] = useState(false);
 
   useEffect(() => {
@@ -234,7 +235,7 @@ function EncounterDetail({
                   <tr>
                     <th>Phase</th>
                     <th>Targets</th>
-                    <th>Avg boss DPS</th>
+                    {showAverageBossDps ? <th>Avg boss DPS</th> : null}
                     <th>Latest boss DPS</th>
                     <th>Avg total DPS</th>
                     <th>Avg time</th>
@@ -246,7 +247,7 @@ function EncounterDetail({
                     <tr key={phase.key}>
                       <td>{phase.name}</td>
                       <td>{formatPhaseTargets(phase.targetNames)}</td>
-                      <td>{formatDps(phase.averageSquadTargetDps)}</td>
+                      {showAverageBossDps ? <td>{formatDps(phase.averageSquadTargetDps)}</td> : null}
                       <td>{formatDps(phase.latestSquadTargetDps)}</td>
                       <td>{formatDps(phase.averageSquadDps)}</td>
                       <td>{formatSeconds(phase.averageDurationSeconds)}</td>

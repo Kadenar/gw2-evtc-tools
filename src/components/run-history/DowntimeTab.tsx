@@ -1,40 +1,61 @@
+import { useMemo, useState } from "react";
 import { formatSeconds } from "../../lib/format";
-import type { RaidNightSummary } from "./types";
-import { average, buildTimelineRows, formatTimeDelta, maxBy, mostCommonGapSource } from "./utils";
-import { RunTimeline, StatCard } from "./shared";
+import type { HistoryFilterActions, HistoryFilters, RaidNightSummary } from "./types";
+import { buildTimelineRows } from "./utils";
+import { HistoryFilterPanel } from "./shared";
 
-export function DowntimeTab({ night, previousNight }: { night: RaidNightSummary | null; previousNight: RaidNightSummary | null }) {
-  const rows = night ? buildTimelineRows(night).filter((row) => row.type === "gap" && row.seconds >= 30) : [];
-  const longest = maxBy(rows, (row) => (row.type === "gap" ? row.seconds : 0));
-  const averageGap = average(rows.map((row) => (row.type === "gap" ? row.seconds : 0))) ?? 0;
+type DowntimeSortMode = "time-lost" | "timeline";
+type DowntimeGapRow = Extract<ReturnType<typeof buildTimelineRows>[number], { type: "gap" }>;
+
+export function DowntimeTab({
+  filters,
+  filterActions,
+  weekOptions,
+  wingOptions,
+  night,
+}: {
+  filters: HistoryFilters;
+  filterActions: HistoryFilterActions;
+  weekOptions: string[];
+  wingOptions: number[];
+  night: RaidNightSummary | null;
+}) {
+  const [sortMode, setSortMode] = useState<DowntimeSortMode>("timeline");
+  const rows = useMemo(() => {
+    const gapRows: DowntimeGapRow[] = night
+      ? buildTimelineRows(night).filter((row): row is DowntimeGapRow => row.type === "gap" && row.seconds >= 30)
+      : [];
+
+    return gapRows.slice().sort((left, right) => {
+      if (sortMode === "timeline") {
+        return left.offsetSeconds - right.offsetSeconds || right.seconds - left.seconds;
+      }
+
+      return right.seconds - left.seconds || left.offsetSeconds - right.offsetSeconds;
+    });
+  }, [night, sortMode]);
 
   return (
     <>
-      <div className="panel">
-        <div className="section-heading">
-          <h3>Downtime</h3>
-        </div>
-        <div className="history-stat-grid">
-            <StatCard label="Total downtime" value={night ? formatSeconds(night.downtime) : "N/A"} detail={formatTimeDelta(night?.downtime, previousNight?.downtime)} />
-            <StatCard label="Avg between bosses" value={formatSeconds(averageGap)} detail={`${rows.length} gaps over 30s`} />
-            <StatCard label="Longest gap" value={longest && longest.type === "gap" ? formatSeconds(longest.seconds) : "N/A"} detail={longest && longest.type === "gap" ? longest.label : "No gap"} />
-          </div>
-      </div>
-
+      <HistoryFilterPanel
+        filters={filters}
+        filterActions={filterActions}
+        weekOptions={weekOptions}
+        wingOptions={wingOptions}
+        title="Downtime"
+      />
       <div className="panel">
         <div className="section-heading">
           <div>
-            <h3>Downtime timeline</h3>
+            <h3>Downtime segments</h3>
           </div>
-        </div>
-        {night ? <RunTimeline night={night} /> : <p className="muted">No raid night selected.</p>}
-      </div>
-
-      <div className="panel">
-        <div className="section-heading">
-          <div>
-            <h3>Largest downtime segments</h3>
-          </div>
+          <label className="field compact">
+            <span>Sort by</span>
+            <select value={sortMode} onChange={(event) => setSortMode(event.target.value as DowntimeSortMode)}>
+              <option value="timeline">Occurs during clear</option>
+              <option value="time-lost">Time lost</option>
+            </select>
+          </label>
         </div>
         <div className="table-wrap">
           <table>
@@ -42,24 +63,21 @@ export function DowntimeTab({ night, previousNight }: { night: RaidNightSummary 
               <tr>
                 <th>#</th>
                 <th>Segment</th>
+                <th>Occurs at</th>
                 <th>Time lost</th>
                 <th>Source</th>
               </tr>
             </thead>
             <tbody>
-              {rows
-                .slice()
-                .sort((a, b) => (b.type === "gap" ? b.seconds : 0) - (a.type === "gap" ? a.seconds : 0))
-                .map((row, index) =>
-                  row.type === "gap" ? (
-                    <tr key={row.id}>
-                      <td>{index + 1}</td>
-                      <td>{row.label}</td>
-                      <td>{formatSeconds(row.seconds)}</td>
-                      <td>{row.source}</td>
-                    </tr>
-                  ) : null,
-                )}
+              {rows.map((row, index) => (
+                <tr key={row.id}>
+                  <td>{index + 1}</td>
+                  <td>{row.label}</td>
+                  <td>{formatSeconds(row.offsetSeconds)}</td>
+                  <td>{formatSeconds(row.seconds)}</td>
+                  <td>{row.source}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

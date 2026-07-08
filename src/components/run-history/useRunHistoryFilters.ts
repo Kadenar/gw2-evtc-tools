@@ -7,6 +7,7 @@ export function useRunHistoryFilters(runs: RunRecord[]): {
   filters: HistoryFilters;
   filterActions: HistoryFilterActions;
   filteredRuns: RunRecord[];
+  filteredRunsAllWeeks: RunRecord[];
   scopedRuns: RunRecord[];
   sortedRuns: RunRecord[];
   weekOptions: string[];
@@ -28,6 +29,10 @@ export function useRunHistoryFilters(runs: RunRecord[]): {
   const filteredRuns = useMemo(
     () => filterRuns(runs, { query, weekFilter, wingFilter, resultFilter, cmFilter, sessionTypeFilter }),
     [cmFilter, query, resultFilter, runs, sessionTypeFilter, weekFilter, wingFilter],
+  );
+  const filteredRunsAllWeeks = useMemo(
+    () => filterRuns(runs, { query, weekFilter: "all", wingFilter, resultFilter, cmFilter, sessionTypeFilter }),
+    [cmFilter, query, resultFilter, runs, sessionTypeFilter, wingFilter],
   );
   const scopedRuns = useMemo(
     () => filterRuns(runs, { query: "", weekFilter: "all", wingFilter: "all", resultFilter: "all", cmFilter: "all", sessionTypeFilter }),
@@ -69,5 +74,5 @@ export function useRunHistoryFilters(runs: RunRecord[]): {
     [],
   );
 
-  return { filters, filterActions, filteredRuns, scopedRuns, sortedRuns, weekOptions, wingOptions };
+  return { filters, filterActions, filteredRuns, filteredRunsAllWeeks, scopedRuns, sortedRuns, weekOptions, wingOptions };
 }

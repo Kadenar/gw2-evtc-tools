@@ -58,11 +58,11 @@ export const RAID_ENCOUNTERS: Encounter[] = [
   { id: 26774, code: "deci", name: "Decima, the Stormsinger", wing: 8, kind: "boss" },
   { id: 26867, code: "deci", name: "Decima, the Stormsinger", wing: 8, kind: "boss" },
   { id: 26712, code: "ura", name: "Ura, the Steamshrieker", wing: 8, kind: "boss" },
-  { id: 27124, code: "kela", name: "Kela, Seneschal of Waves", wing: 8, kind: "boss" },
 ];
 
 export const KNOWN_ENCOUNTERS: Encounter[] = [
   ...RAID_ENCOUNTERS,
+  { id: 27124, code: "kela", name: "Kela, Seneschal of Waves", wing: null, kind: "other" },
   { id: 16199, code: "golem", name: "Standard Kitty Golem", wing: null, kind: "golem" },
   { id: 19645, code: "golem", name: "Medium Kitty Golem", wing: null, kind: "golem" },
   { id: 19676, code: "golem", name: "Large Kitty Golem", wing: null, kind: "golem" },

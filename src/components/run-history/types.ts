@@ -4,7 +4,7 @@ export type ResultFilter = "all" | "kill" | "wipe" | "unknown";
 export type CmFilter = "all" | "cm" | "normal";
 export type SessionTypeFilter = "all" | RunSessionType;
 export type SortMode = "newest" | "oldest" | "duration" | "dps" | "encounter";
-export type HistoryView = "dashboard" | "runs" | "weeks" | "wings" | "encounters" | "downtime";
+export type HistoryView = "dashboard" | "runs" | "manage" | "weeks" | "wings" | "encounters" | "downtime";
 
 export type HistoryFilters = {
   query: string;
@@ -77,7 +77,10 @@ export type WingHistorySummary = {
   runs: RunRecord[];
   latestTime: number | null;
   bestTime: number | null;
+  bestTimeStart: number | null;
   averageTime: number | null;
   wipes: number;
+  comparableSessions: number;
+  partialSessions: number;
   trend: string;
 };

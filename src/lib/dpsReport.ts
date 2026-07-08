@@ -1,7 +1,7 @@
 import { getEncounterName, getEncounterWing } from "../data/encounters";
 
 export type DpsReportDomain = "https://dps.report" | "https://b.dps.report";
-export const ENCOUNTER_PHASE_DATA_VERSION = 2;
+export const ENCOUNTER_PHASE_DATA_VERSION = 3;
 
 export type DpsReportMetadata = {
   id?: string;
@@ -43,10 +43,22 @@ export type EncounterPhaseMetric = {
   squadTargetDamage: number | null;
 };
 
+export type EncounterPlayerMetric = {
+  name: string;
+  account: string | null;
+  profession: string | null;
+  group: number | null;
+  squadDps: number | null;
+  squadDamage: number | null;
+  targetDps: number | null;
+  targetDamage: number | null;
+};
+
 export type EncounterPhaseData = {
   version: number;
   fetchedAt: string;
   phases: EncounterPhaseMetric[];
+  players: EncounterPlayerMetric[];
 };
 
 export type SessionLog = {
@@ -110,6 +122,10 @@ type DpsReportJsonDpsStat = {
 };
 
 type DpsReportJsonPlayer = {
+  name?: string;
+  account?: string;
+  profession?: string;
+  group?: number;
   firstAware?: number;
   lastAware?: number;
   dpsAll?: Array<DpsReportJsonDpsStat | null>;
@@ -324,6 +340,7 @@ function buildEncounterPhaseData(report: DpsReportEncounterJson): EncounterPhase
   const players = Array.isArray(report.players) ? report.players : [];
   const targets = Array.isArray(report.targets) ? report.targets : [];
   const keyPhases = getKeyPhases(phases);
+  const encounterPhaseContext = getEncounterPhaseContext(phases);
 
   return {
     version: ENCOUNTER_PHASE_DATA_VERSION,
@@ -352,6 +369,25 @@ function buildEncounterPhaseData(report: DpsReportEncounterJson): EncounterPhase
         squadTargetDamage: sumTargetDpsStat(activePlayers, mainTargetIndexes, phaseIndex, "damage"),
       };
     }),
+    players: buildEncounterPlayerMetrics(players, encounterPhaseContext.mainTargetIndexes, encounterPhaseContext.phaseIndex),
+  };
+}
+
+function getEncounterPhaseContext(phases: DpsReportJsonPhase[]): {
+  phaseIndex: number;
+  mainTargetIndexes: number[];
+} {
+  const indexedPhases = phases.map((phase, phaseIndex) => ({ phase, phaseIndex }));
+  const encounterPhase = indexedPhases.find(({ phase }) => isEncounterPhase(phase)) ?? indexedPhases[0];
+
+  if (!encounterPhase) {
+    return { phaseIndex: 0, mainTargetIndexes: [] };
+  }
+
+  const targetIndexes = getPhaseTargetIndexes(encounterPhase.phase);
+  return {
+    phaseIndex: encounterPhase.phaseIndex,
+    mainTargetIndexes: getMainTargetIndexes(encounterPhase.phase, targetIndexes),
   };
 }
 
@@ -487,6 +523,55 @@ function sumTargetDpsStat(
       total += value;
       hasValue = true;
     }
+  }
+
+  return hasValue ? total : null;
+}
+
+function buildEncounterPlayerMetrics(
+  players: DpsReportJsonPlayer[],
+  mainTargetIndexes: number[],
+  encounterPhaseIndex: number,
+): EncounterPlayerMetric[] {
+  return players
+    .map((player, index) => {
+      const squadDps = readFiniteNumber(player.dpsAll?.[encounterPhaseIndex]?.dps);
+      const squadDamage = readFiniteNumber(player.dpsAll?.[encounterPhaseIndex]?.damage);
+      const targetDps = sumPlayerTargetStat(player, mainTargetIndexes, encounterPhaseIndex, "dps");
+      const targetDamage = sumPlayerTargetStat(player, mainTargetIndexes, encounterPhaseIndex, "damage");
+
+      if (squadDps == null && squadDamage == null && targetDps == null && targetDamage == null) {
+        return null;
+      }
+
+      return {
+        name: readNonEmptyString(player.name) ?? readNonEmptyString(player.account) ?? `Player ${index + 1}`,
+        account: readNonEmptyString(player.account),
+        profession: readNonEmptyString(player.profession),
+        group: readFiniteNumber(player.group),
+        squadDps,
+        squadDamage,
+        targetDps,
+        targetDamage,
+      };
+    })
+    .filter((player): player is EncounterPlayerMetric => player != null);
+}
+
+function sumPlayerTargetStat(
+  player: DpsReportJsonPlayer,
+  targetIndexes: number[],
+  phaseIndex: number,
+  stat: keyof DpsReportJsonDpsStat,
+): number | null {
+  let total = 0;
+  let hasValue = false;
+
+  for (const targetIndex of targetIndexes) {
+    const value = readFiniteNumber(player.dpsTargets?.[targetIndex]?.[phaseIndex]?.[stat]);
+    if (value == null) continue;
+    total += value;
+    hasValue = true;
   }
 
   return hasValue ? total : null;

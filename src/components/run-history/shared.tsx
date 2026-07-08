@@ -20,12 +20,16 @@ export function HistoryFilterPanel({
   weekOptions,
   wingOptions,
   title,
+  showWeekFilter = true,
+  showSortFilter = true,
 }: {
   filters: HistoryFilters;
   filterActions: HistoryFilterActions;
   weekOptions: string[];
   wingOptions: number[];
   title: string;
+  showWeekFilter?: boolean;
+  showSortFilter?: boolean;
 }) {
   const { query, weekFilter, wingFilter, resultFilter, cmFilter, sessionTypeFilter, sortMode } = filters;
 
@@ -44,17 +48,19 @@ export function HistoryFilterPanel({
           <span>Encounter</span>
           <input value={query} onChange={(event) => filterActions.setQuery(event.target.value)} placeholder="Search boss..." />
         </label>
-        <label className="field compact">
-          <span>Week</span>
-          <select value={weekFilter} onChange={(event) => filterActions.setWeekFilter(event.target.value)}>
-            <option value="all">All weeks</option>
-            {weekOptions.map((weekKey) => (
-              <option value={weekKey} key={weekKey}>
-                {weekKey}
-              </option>
-            ))}
-          </select>
-        </label>
+        {showWeekFilter ? (
+          <label className="field compact">
+            <span>Week</span>
+            <select value={weekFilter} onChange={(event) => filterActions.setWeekFilter(event.target.value)}>
+              <option value="all">All weeks</option>
+              {weekOptions.map((weekKey) => (
+                <option value={weekKey} key={weekKey}>
+                  {weekKey}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <label className="field compact">
           <span>Wing</span>
           <select value={wingFilter} onChange={(event) => filterActions.setWingFilter(event.target.value)}>
@@ -92,16 +98,18 @@ export function HistoryFilterPanel({
             <option value="practice">Practice</option>
           </select>
         </label>
-        <label className="field compact">
-          <span>Sort</span>
-          <select value={sortMode} onChange={(event) => filterActions.setSortMode(event.target.value as SortMode)}>
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="duration">Fastest duration</option>
-            <option value="dps">Highest DPS</option>
-            <option value="encounter">Encounter</option>
-          </select>
-        </label>
+        {showSortFilter ? (
+          <label className="field compact">
+            <span>Sort</span>
+            <select value={sortMode} onChange={(event) => filterActions.setSortMode(event.target.value as SortMode)}>
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="duration">Fastest duration</option>
+              <option value="dps">Highest DPS</option>
+              <option value="encounter">Encounter</option>
+            </select>
+          </label>
+        ) : null}
       </div>
     </div>
   );

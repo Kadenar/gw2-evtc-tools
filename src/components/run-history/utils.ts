@@ -1,7 +1,37 @@
+import { ENCOUNTER_BY_ID, RAID_ENCOUNTERS } from "../../data/encounters";
 import { formatSeconds } from "../../lib/format";
 import type { RunRecord, RunSessionType, WeekSummary } from "../../lib/runHistory";
 import { summarizeRunsByWeek } from "../../lib/runHistory";
 import type { CmFilter, EncounterSummary, RecordHighlight, ResultFilter, RunStats, SessionTypeFilter, SortMode, RaidNightSummary, WingHistorySummary } from "./types";
+
+type WingSessionSummary = {
+  key: string;
+  wing: number;
+  weekKey: string;
+  start: number;
+  totalTime: number;
+  combatTime: number;
+  downtime: number;
+  encounterCodes: string[];
+  expectedEncounterCodes: string[];
+  coverageKey: string;
+  coverageLabel: string;
+  isComparable: boolean;
+};
+
+type WingWeekTimingSummary = {
+  totalTime: number;
+  combatTime: number;
+  downtime: number;
+  coverageKey: string;
+  coverageLabel: string;
+  isComparable: boolean;
+};
+
+type WingDefinition = { code: string; label: string };
+
+const WING_DEFINITIONS = buildWingDefinitions();
+const ENCOUNTER_CODE_BY_NAME = buildEncounterCodeByName();
 
 export function buildRaidNightSummaries(runs: RunRecord[]): RaidNightSummary[] {
   const byNight = new Map<string, RunRecord[]>();
@@ -43,62 +73,270 @@ export function buildRaidNightSummaries(runs: RunRecord[]): RaidNightSummary[] {
 }
 
 export function buildWingHistorySummaries(runs: RunRecord[]): WingHistorySummary[] {
-  const byWing = new Map<number, RunRecord[]>();
+  const runsByWing = new Map<number, RunRecord[]>();
+  const sessionsByWing = new Map<number, WingSessionSummary[]>();
 
   for (const run of runs) {
     if (run.wing == null) continue;
-    byWing.set(run.wing, [...(byWing.get(run.wing) ?? []), run]);
+    runsByWing.set(run.wing, [...(runsByWing.get(run.wing) ?? []), run]);
   }
 
-  return Array.from(byWing.entries())
-    .map(([wing, wingRuns]) => {
-      const nightTimes = buildRaidNightSummaries(wingRuns).map((night) => night.totalTime).filter((time) => time > 0);
-      const latestTime = nightTimes[0] ?? null;
-      const previousTime = nightTimes[1] ?? null;
+  for (const session of buildWingSessionSummaries(runs)) {
+    sessionsByWing.set(session.wing, [...(sessionsByWing.get(session.wing) ?? []), session]);
+  }
+
+  return Array.from(sessionsByWing.entries())
+    .map(([wing, sessions]) => {
+      const comparableSessions = sessions.filter((session) => session.isComparable);
+      const times = comparableSessions.map((session) => session.totalTime).filter((time) => time > 0);
+      const bestSession = comparableSessions.reduce<WingSessionSummary | null>((best, session) => {
+        if (session.totalTime <= 0) return best;
+        if (!best) return session;
+        if (session.totalTime < best.totalTime) return session;
+        if (session.totalTime === best.totalTime && session.start > best.start) return session;
+        return best;
+      }, null);
+      const latestTime = comparableSessions[0]?.totalTime ?? null;
+      const previousTime = comparableSessions[1]?.totalTime ?? null;
       return {
         wing,
-        runs: wingRuns,
+        runs: runsByWing.get(wing) ?? [],
         latestTime,
-        bestTime: nightTimes.length ? Math.min(...nightTimes) : null,
-        averageTime: average(nightTimes),
-        wipes: wingRuns.filter((run) => run.success === false).length,
+        bestTime: bestSession?.totalTime ?? (times.length ? Math.min(...times) : null),
+        bestTimeStart: bestSession?.start ?? null,
+        averageTime: average(times),
+        wipes: (runsByWing.get(wing) ?? []).filter((run) => run.success === false).length,
+        comparableSessions: comparableSessions.length,
+        partialSessions: sessions.length - comparableSessions.length,
         trend: latestTime == null || previousTime == null ? "needs data" : latestTime < previousTime ? "better" : latestTime > previousTime ? "slower" : "stable",
       };
     })
-    .sort((a, b) => (a.bestTime ?? Number.POSITIVE_INFINITY) - (b.bestTime ?? Number.POSITIVE_INFINITY));
+    .sort((a, b) => a.wing - b.wing);
 }
 
 export function buildWeekWingRows(
-  current: WeekSummary | undefined,
-  previous: WeekSummary | undefined,
-): Array<{ wing: number; current: number | null; previous: number | null; note: string }> {
-  const currentByWing = summarizeWeekByWing(current);
-  const previousByWing = summarizeWeekByWing(previous);
+  currentRuns: RunRecord[],
+  previousRuns: RunRecord[],
+): Array<{ wing: number; current: number | null; previous: number | null; change: string; note: string }> {
+  const currentByWing = summarizeWeekByWing(currentRuns);
+  const previousByWing = summarizeWeekByWing(previousRuns);
   const wings = Array.from(new Set([...currentByWing.keys(), ...previousByWing.keys()])).sort((a, b) => a - b);
 
   return wings.map((wing) => {
-    const currentTime = currentByWing.get(wing) ?? null;
-    const previousTime = previousByWing.get(wing) ?? null;
-    let note = "Needs both weeks";
-    if (currentTime != null && previousTime != null) {
-      const delta = currentTime - previousTime;
-      note = Math.abs(delta) < 1 ? "Stable" : delta < 0 ? "Faster overall" : "Slower overall";
+    const currentTiming = currentByWing.get(wing) ?? null;
+    const previousTiming = previousByWing.get(wing) ?? null;
+
+    if (!currentTiming || !previousTiming) {
+      return {
+        wing,
+        current: currentTiming?.totalTime ?? null,
+        previous: previousTiming?.totalTime ?? null,
+        change: "Needs both weeks",
+        note: currentTiming ? `Only this week: ${currentTiming.coverageLabel}` : previousTiming ? `Only last week: ${previousTiming.coverageLabel}` : "Needs both weeks",
+      };
     }
-    return { wing, current: currentTime, previous: previousTime, note };
+
+    if (currentTiming.coverageKey !== previousTiming.coverageKey) {
+      return {
+        wing,
+        current: currentTiming.totalTime,
+        previous: previousTiming.totalTime,
+        change: "Coverage mismatch",
+        note: `Coverage changed: this week ${currentTiming.coverageLabel}, last week ${previousTiming.coverageLabel}`,
+      };
+    }
+
+    return {
+      wing,
+      current: currentTiming.totalTime,
+      previous: previousTiming.totalTime,
+      change: formatTimeDelta(currentTiming.totalTime, previousTiming.totalTime),
+      note: describeWingTimingDelta(wing, currentTiming, previousTiming),
+    };
   });
 }
 
-function summarizeWeekByWing(week: WeekSummary | undefined): Map<number, number> {
-  const map = new Map<number, number>();
-  if (!week) return map;
-  for (const encounter of week.encounters) {
-    if (encounter.wing == null) continue;
-    map.set(encounter.wing, (map.get(encounter.wing) ?? 0) + encounter.totalDuration);
+function summarizeWeekByWing(runs: RunRecord[]): Map<number, WingWeekTimingSummary> {
+  const sessionsByWing = new Map<number, WingSessionSummary[]>();
+
+  for (const session of buildWingSessionSummaries(runs)) {
+    sessionsByWing.set(session.wing, [...(sessionsByWing.get(session.wing) ?? []), session]);
   }
-  return map;
+
+  return new Map(
+    Array.from(sessionsByWing.entries()).map(([wing, sessions]) => {
+      const totalTime = sessions.reduce((sum, session) => sum + session.totalTime, 0);
+      const combatTime = sessions.reduce((sum, session) => sum + session.combatTime, 0);
+      const downtime = sessions.reduce((sum, session) => sum + session.downtime, 0);
+      const expectedEncounterCodes = getExpectedWingEncounterCodes(wing);
+      const encounterCodes = sortEncounterCodesForWing(wing, Array.from(new Set(sessions.flatMap((session) => session.encounterCodes))));
+
+      return [
+        wing,
+        {
+          totalTime,
+          combatTime,
+          downtime,
+          coverageKey: encounterCodes.join("|"),
+          coverageLabel: formatCoverageLabel(wing, encounterCodes),
+          isComparable: expectedEncounterCodes.every((code) => encounterCodes.includes(code)),
+        },
+      ] satisfies [number, WingWeekTimingSummary];
+    }),
+  );
 }
 
-export type TimelineRow = { type: "run"; id: string; run: RunRecord } | { type: "gap"; id: string; label: string; source: string; seconds: number };
+function buildWingSessionSummaries(runs: RunRecord[]): WingSessionSummary[] {
+  const bySession = new Map<string, RunRecord[]>();
+
+  for (const run of runs) {
+    if (run.wing == null) continue;
+    const key = `${getRunSessionType(run)}:${getNightKey(run)}:wing:${run.wing}`;
+    bySession.set(key, [...(bySession.get(key) ?? []), run]);
+  }
+
+  return Array.from(bySession.entries())
+    .map(([key, sessionRuns]) => {
+      const sorted = [...sessionRuns].sort((left, right) => getRunStart(left) - getRunStart(right));
+      const start = sorted[0] ? getRunStart(sorted[0]) : 0;
+      const end = sorted.length ? Math.max(...sorted.map(getRunEnd)) : start;
+      const combatTime = sorted.reduce((sum, run) => sum + Math.max(0, run.duration), 0);
+      const totalTime = Math.max(combatTime, end > start ? end - start : combatTime);
+      const wing = sorted[0]?.wing ?? null;
+
+      if (wing == null) return null;
+
+      const encounterCodes = sortEncounterCodesForWing(wing, Array.from(
+        new Set(
+          sorted
+            .map(getWingEncounterCode)
+            .filter((code): code is string => code != null),
+        ),
+      ));
+      const expectedEncounterCodes = getExpectedWingEncounterCodes(wing);
+
+      return {
+        key,
+        wing,
+        weekKey: sorted[0]?.weekKey ?? "",
+        start,
+        totalTime,
+        combatTime,
+        downtime: Math.max(0, totalTime - combatTime),
+        encounterCodes,
+        expectedEncounterCodes,
+        coverageKey: encounterCodes.join("|"),
+        coverageLabel: formatCoverageLabel(wing, encounterCodes),
+        isComparable: expectedEncounterCodes.length > 0 && expectedEncounterCodes.every((code) => encounterCodes.includes(code)),
+      };
+    })
+    .filter((session): session is WingSessionSummary => session != null)
+    .sort((left, right) => right.start - left.start);
+}
+
+function getWingEncounterCode(run: RunRecord): string | null {
+  const encounter = run.bossId != null ? ENCOUNTER_BY_ID.get(run.bossId) : undefined;
+  if (encounter?.kind === "boss") {
+    return encounter.code;
+  }
+
+  const normalizedName = normalizeEncounterName(run.bossName);
+  if (normalizedName.includes("twin largos")) return "twins";
+  return ENCOUNTER_CODE_BY_NAME.get(normalizedName) ?? null;
+}
+
+function getExpectedWingEncounterCodes(wing: number): string[] {
+  return WING_DEFINITIONS.get(wing)?.map((definition) => definition.code) ?? [];
+}
+
+function formatCoverageLabel(wing: number, encounterCodes: string[]): string {
+  const definitions = WING_DEFINITIONS.get(wing) ?? [];
+  const labels = definitions.filter((definition) => encounterCodes.includes(definition.code)).map((definition) => definition.label);
+
+  if (!labels.length) return "no bosses logged";
+  if (definitions.length > 0 && labels.length === definitions.length) return "full clear";
+  if (labels.length === 1) return `${labels[0]} only`;
+  return `${labels.length}/${Math.max(definitions.length, labels.length)} bosses: ${labels.join(", ")}`;
+}
+
+function describeWingTimingDelta(wing: number, current: WingWeekTimingSummary, previous: WingWeekTimingSummary): string {
+  const coveragePrefix = current.isComparable ? "" : `${current.coverageLabel}. `;
+  const combatDelta = current.combatTime - previous.combatTime;
+  const downtimeDelta = current.downtime - previous.downtime;
+  const parts: string[] = [];
+
+  if (Math.abs(combatDelta) >= 1) {
+    parts.push(combatDelta < 0 ? `combat ${formatSeconds(Math.abs(combatDelta))} faster` : `combat ${formatSeconds(Math.abs(combatDelta))} slower`);
+  }
+
+  if (Math.abs(downtimeDelta) >= 1) {
+    parts.push(downtimeDelta < 0 ? `${formatSeconds(Math.abs(downtimeDelta))} less downtime` : `${formatSeconds(Math.abs(downtimeDelta))} more downtime`);
+  }
+
+  if (!parts.length) {
+    return `${coveragePrefix}Stable`;
+  }
+
+  return `${coveragePrefix}${capitalize(parts[0])}${parts[1] ? ` and ${parts[1]}` : ""}`;
+}
+
+function buildWingDefinitions(): Map<number, WingDefinition[]> {
+  const byWing = new Map<number, WingDefinition[]>();
+
+  for (const encounter of RAID_ENCOUNTERS) {
+    if (encounter.wing == null || encounter.kind !== "boss") continue;
+
+    const next = byWing.get(encounter.wing) ?? [];
+    if (next.some((definition) => definition.code === encounter.code)) continue;
+
+    next.push({
+      code: encounter.code,
+      label: encounter.name.replace(/\s*-\s.*$/, "").replace(/\s+CM$/, ""),
+    });
+    byWing.set(encounter.wing, next);
+  }
+
+  return new Map(
+    Array.from(byWing.entries()).map(([wing, definitions]) => [
+      wing,
+      definitions.sort(
+        (left, right) =>
+          RAID_ENCOUNTERS.findIndex((encounter) => encounter.code === left.code && encounter.wing === wing)
+          - RAID_ENCOUNTERS.findIndex((encounter) => encounter.code === right.code && encounter.wing === wing),
+      ),
+    ]),
+  );
+}
+
+function buildEncounterCodeByName(): Map<string, string> {
+  return new Map(
+    RAID_ENCOUNTERS.filter((encounter) => encounter.kind === "boss").map((encounter) => [
+      normalizeEncounterName(encounter.name.replace(/\s+CM$/, "")),
+      encounter.code,
+    ]),
+  );
+}
+
+function normalizeEncounterName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+cm$/, "");
+}
+
+function sortEncounterCodesForWing(wing: number, encounterCodes: string[]): string[] {
+  const order = getExpectedWingEncounterCodes(wing);
+  return [...encounterCodes].sort((left, right) => {
+    const leftIndex = order.indexOf(left);
+    const rightIndex = order.indexOf(right);
+    return (leftIndex === -1 ? Number.POSITIVE_INFINITY : leftIndex) - (rightIndex === -1 ? Number.POSITIVE_INFINITY : rightIndex) || left.localeCompare(right);
+  });
+}
+
+function capitalize(value: string): string {
+  return value ? `${value[0].toUpperCase()}${value.slice(1)}` : value;
+}
+
+export type TimelineRow =
+  | { type: "run"; id: string; run: RunRecord }
+  | { type: "gap"; id: string; label: string; source: string; seconds: number; offsetSeconds: number };
 
 export function buildTimelineRows(night: RaidNightSummary): TimelineRow[] {
   const rows: TimelineRow[] = [];
@@ -114,6 +352,7 @@ export function buildTimelineRows(night: RaidNightSummary): TimelineRow[] {
           label: `${shortBossName(previous.bossName)} to ${shortBossName(run.bossName)}`,
           source: getGapSource(previous, run),
           seconds,
+          offsetSeconds: Math.max(0, getRunEnd(previous) - night.start),
         });
       }
     }
@@ -416,6 +655,14 @@ export function formatPullTickDate(run: RunRecord): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(getRunStart(run) * 1000));
+}
+
+export function formatCalendarDate(unixSeconds: number): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(unixSeconds * 1000));
 }
 
 export function formatClock(unixSeconds: number): string {

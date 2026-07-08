@@ -520,6 +520,7 @@ function readEncounterPhaseData(value: Record<string, unknown>): EncounterPhaseD
     version: readOptionalNumber(field, "version") ?? 1,
     fetchedAt,
     phases: phasesValue.map((phase, index) => readEncounterPhaseMetric(phase, index)),
+    players: Array.isArray(field.players) ? field.players.map((player, index) => readEncounterPlayerMetric(player, index)) : [],
   };
 }
 
@@ -541,6 +542,23 @@ function readEncounterPhaseMetric(value: unknown, index: number): EncounterPhase
     squadDamage: readNullableNumber(value, "squadDamage"),
     squadTargetDps: readNullableNumber(value, "squadTargetDps"),
     squadTargetDamage: readNullableNumber(value, "squadTargetDamage"),
+  };
+}
+
+function readEncounterPlayerMetric(value: unknown, index: number): EncounterPhaseData["players"][number] {
+  if (!isObject(value)) {
+    throw new Error(`Backup run has invalid player entry at index ${index}.`);
+  }
+
+  return {
+    name: readString(value, "name"),
+    account: readNullableString(value, "account"),
+    profession: readNullableString(value, "profession"),
+    group: readNullableNumber(value, "group"),
+    squadDps: readNullableNumber(value, "squadDps"),
+    squadDamage: readNullableNumber(value, "squadDamage"),
+    targetDps: readNullableNumber(value, "targetDps"),
+    targetDamage: readNullableNumber(value, "targetDamage"),
   };
 }
 
