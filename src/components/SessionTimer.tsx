@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { EmptyCard } from "./ui/empty-card";
 import { FileDropzone } from "./ui/file-dropzone";
-import { ProjectSelect } from "./ui/project-select";
+import { AppSelect } from "./ui/app-select";
 import {
   DpsReportDomain,
   SessionLog,
@@ -192,7 +192,7 @@ export function SessionTimer() {
           <h3 className="mb-3 mt-0 text-[1.25rem]">Or upload logs</h3>
           <label className={cx(fieldClass, "mx-0 mt-0 mb-3 max-w-60")}>
             <span className="text-muted">Upload domain</span>
-            <ProjectSelect value={uploadDomain} onValueChange={(value) => setUploadDomain(value as DpsReportDomain)} options={UPLOAD_DOMAIN_OPTIONS} />
+            <AppSelect value={uploadDomain} onValueChange={(value) => setUploadDomain(value as DpsReportDomain)} options={UPLOAD_DOMAIN_OPTIONS} />
           </label>
           <FileDropzone
             className="min-h-35"
@@ -230,7 +230,7 @@ export function SessionTimer() {
           <div className={cx(inlineActionsClass, "items-center")}>
             <label className={cx(fieldClass, compactFieldClass, "m-0 flex max-w-none items-center gap-[0.6rem]")}>
               <span className="whitespace-nowrap text-muted">History type</span>
-              <ProjectSelect
+              <AppSelect
                 value={runSessionType}
                 disabled={isWorking}
                 onValueChange={(value) => setRunSessionType(value as RunSessionType)}

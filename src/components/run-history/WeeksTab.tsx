@@ -3,7 +3,7 @@ import { getEncounterSortOrder } from "../../data/encounters";
 import { formatSeconds } from "../../lib/format";
 import { compactFieldClass, cx, fieldClass, overviewGridClass, panelClass, sectionHeadingClass, statGridClass, summaryCardClass, tableWrapClass } from "../../lib/ui";
 import { EmptyCard } from "../ui/empty-card";
-import { ProjectSelect } from "../ui/project-select";
+import { AppSelect } from "../ui/app-select";
 import { hasCurrentPhaseData, type RunRecord, type WeekSummary } from "../../lib/runHistory";
 import type { EncounterSummary, HistoryFilterActions, HistoryFilters, RaidNightSummary } from "./types";
 import {
@@ -151,7 +151,7 @@ export function WeeksTab({
         <div className="grid items-end gap-[0.9rem] [grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)] max-nav:grid-cols-1">
           <label className={cx(fieldClass, compactFieldClass, "m-0 max-w-none")}>
             <span className="text-muted">Selected week</span>
-            <ProjectSelect value={selectedWeekKey} onValueChange={setSelectedWeekKey} options={selectedWeekOptions} />
+            <AppSelect value={selectedWeekKey} onValueChange={setSelectedWeekKey} options={selectedWeekOptions} />
           </label>
           <button
             type="button"
@@ -168,7 +168,7 @@ export function WeeksTab({
           </button>
           <label className={cx(fieldClass, compactFieldClass, "m-0 max-w-none")}>
             <span className="text-muted">Compare against</span>
-            <ProjectSelect value={compareWeekKey} onValueChange={setCompareWeekKey} options={compareWeekOptions} />
+            <AppSelect value={compareWeekKey} onValueChange={setCompareWeekKey} options={compareWeekOptions} />
           </label>
         </div>
       </div>

@@ -10,7 +10,7 @@ import {
   sectionHeadingClass,
   summaryCardClass,
 } from "../../lib/ui";
-import { ProjectSelect, type ProjectSelectOption } from "../ui/project-select";
+import { AppSelect, type AppSelectOption } from "../ui/app-select";
 import type { HistoryFilterActions, HistoryFilters, RaidNightSummary, ResultFilter, SessionTypeFilter, SortMode } from "./types";
 import {
   buildTimelineRows,
@@ -44,32 +44,32 @@ export function HistoryFilterPanel({
 }) {
   const { query, weekFilter, wingFilter, resultFilter, cmFilter, sessionTypeFilter, sortMode } = filters;
   const fieldClasses = cx(fieldClass, compactFieldClass);
-  const weekFilterOptions: ProjectSelectOption[] = [
+  const weekFilterOptions: AppSelectOption[] = [
     { value: "all", label: "All weeks" },
     ...weekOptions.map((weekKey) => ({ value: weekKey, label: weekKey })),
   ];
-  const wingFilterOptions: ProjectSelectOption[] = [
+  const wingFilterOptions: AppSelectOption[] = [
     { value: "all", label: "All wings" },
     { value: "unmapped", label: "Unmapped" },
     ...wingOptions.map((wing) => ({ value: String(wing), label: `Wing ${wing}` })),
   ];
-  const resultFilterOptions: ProjectSelectOption[] = [
+  const resultFilterOptions: AppSelectOption[] = [
     { value: "all", label: "All results" },
     { value: "kill", label: "Kills" },
     { value: "wipe", label: "Wipes" },
     { value: "unknown", label: "Unknown" },
   ];
-  const cmFilterOptions: ProjectSelectOption[] = [
+  const cmFilterOptions: AppSelectOption[] = [
     { value: "all", label: "CM and normal" },
     { value: "cm", label: "CM only" },
     { value: "normal", label: "Normal only" },
   ];
-  const sessionFilterOptions: ProjectSelectOption[] = [
+  const sessionFilterOptions: AppSelectOption[] = [
     { value: "all", label: "All sessions" },
     { value: "full-clear", label: "Full clear" },
     { value: "practice", label: "Practice" },
   ];
-  const sortOptions: ProjectSelectOption[] = [
+  const sortOptions: AppSelectOption[] = [
     { value: "newest", label: "Newest first" },
     { value: "oldest", label: "Oldest first" },
     { value: "duration", label: "Fastest duration" },
@@ -95,20 +95,20 @@ export function HistoryFilterPanel({
         {showWeekFilter ? (
           <label className={fieldClasses}>
             <span className="text-muted">Week</span>
-            <ProjectSelect value={weekFilter} onValueChange={filterActions.setWeekFilter} options={weekFilterOptions} />
+            <AppSelect value={weekFilter} onValueChange={filterActions.setWeekFilter} options={weekFilterOptions} />
           </label>
         ) : null}
         <label className={fieldClasses}>
           <span className="text-muted">Wing</span>
-          <ProjectSelect value={wingFilter} onValueChange={filterActions.setWingFilter} options={wingFilterOptions} />
+          <AppSelect value={wingFilter} onValueChange={filterActions.setWingFilter} options={wingFilterOptions} />
         </label>
         <label className={fieldClasses}>
           <span className="text-muted">Result</span>
-          <ProjectSelect value={resultFilter} onValueChange={(value) => filterActions.setResultFilter(value as ResultFilter)} options={resultFilterOptions} />
+          <AppSelect value={resultFilter} onValueChange={(value) => filterActions.setResultFilter(value as ResultFilter)} options={resultFilterOptions} />
         </label>
         <label className={fieldClasses}>
           <span className="text-muted">Mode</span>
-          <ProjectSelect
+          <AppSelect
             value={cmFilter}
             onValueChange={(value) => filterActions.setCmFilter(value as HistoryFilters["cmFilter"])}
             options={cmFilterOptions}
@@ -116,7 +116,7 @@ export function HistoryFilterPanel({
         </label>
         <label className={fieldClasses}>
           <span className="text-muted">Session</span>
-          <ProjectSelect
+          <AppSelect
             value={sessionTypeFilter}
             onValueChange={(value) => filterActions.setSessionTypeFilter(value as SessionTypeFilter)}
             options={sessionFilterOptions}
@@ -125,7 +125,7 @@ export function HistoryFilterPanel({
         {showSortFilter ? (
           <label className={fieldClasses}>
             <span className="text-muted">Sort</span>
-            <ProjectSelect value={sortMode} onValueChange={(value) => filterActions.setSortMode(value as SortMode)} options={sortOptions} />
+            <AppSelect value={sortMode} onValueChange={(value) => filterActions.setSortMode(value as SortMode)} options={sortOptions} />
           </label>
         ) : null}
       </div>

@@ -24,7 +24,7 @@ import { RunsTab } from "./run-history/RunsTab";
 import { WeeksTab } from "./run-history/WeeksTab";
 import { WingsTab } from "./run-history/WingsTab";
 import { EmptyCard } from "./ui/empty-card";
-import { ProjectSelect } from "./ui/project-select";
+import { AppSelect } from "./ui/app-select";
 import type { HistoryView, SessionTypeFilter } from "./run-history/types";
 import { useRunHistoryFilters } from "./run-history/useRunHistoryFilters";
 import {
@@ -419,7 +419,7 @@ export function RunHistory() {
 
         <label className={cx(fieldClass, compactFieldClass, "m-0 max-w-none")}>
           <span className="text-muted">Metric scope</span>
-          <ProjectSelect
+          <AppSelect
             value={filters.sessionTypeFilter}
             onValueChange={(value) => filterActions.setSessionTypeFilter(value as SessionTypeFilter)}
             options={HISTORY_SCOPE_OPTIONS}
@@ -441,7 +441,7 @@ export function RunHistory() {
           </div>
           <label className={cx(fieldClass, compactFieldClass, "max-w-none")}>
             <span className="text-muted">Import mode</span>
-            <ProjectSelect value={importMode} disabled={isWorking} onValueChange={(value) => setImportMode(value as ImportMode)} options={IMPORT_MODE_OPTIONS} />
+            <AppSelect value={importMode} disabled={isWorking} onValueChange={(value) => setImportMode(value as ImportMode)} options={IMPORT_MODE_OPTIONS} />
           </label>
           <div className="grid items-stretch gap-[0.65rem]">
             <button type="button" className="btn btn-block" disabled={!hasRuns || isWorking} onClick={exportBackup}>

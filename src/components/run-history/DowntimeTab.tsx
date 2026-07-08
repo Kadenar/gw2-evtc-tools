@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { formatSeconds } from "../../lib/format";
 import { compactFieldClass, cx, fieldClass, panelClass, sectionHeadingClass, tableWrapClass } from "../../lib/ui";
-import { ProjectSelect } from "../ui/project-select";
+import { AppSelect } from "../ui/app-select";
 import type { HistoryFilterActions, HistoryFilters, RaidNightSummary } from "./types";
 import { buildTimelineRows } from "./utils";
 import { HistoryFilterPanel } from "./shared";
@@ -58,7 +58,7 @@ export function DowntimeTab({
           </div>
           <label className={cx(fieldClass, compactFieldClass, "m-0")}>
             <span className="text-muted">Sort by</span>
-            <ProjectSelect value={sortMode} onValueChange={(value) => setSortMode(value as DowntimeSortMode)} options={DOWNTIME_SORT_OPTIONS} />
+            <AppSelect value={sortMode} onValueChange={(value) => setSortMode(value as DowntimeSortMode)} options={DOWNTIME_SORT_OPTIONS} />
           </label>
         </div>
         <div className={tableWrapClass}>
