@@ -53,7 +53,7 @@ This project includes a local `.npmrc` forcing installs to use the public npm re
 registry=https://registry.npmjs.org/
 ```
 
-There is intentionally no `package-lock.json` in the starter zip. Run `npm install` on your machine to create a fresh lockfile that points to the public npm registry, not a generated/internal registry.
+There is intentionally no `package-lock.json` in the starter zip. Run `npm install` on your machine to create a fresh lockfile
 
 ## Run locally
 
@@ -72,7 +72,7 @@ npm run dev
 Open the URL Vite prints in your terminal, usually:
 
 ```txt
-http://localhost:5174
+http://localhost:5175
 ```
 
 ## Build locally
