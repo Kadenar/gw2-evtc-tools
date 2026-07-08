@@ -4,7 +4,7 @@ import { formatSeconds } from "../../lib/format";
 import { hasCurrentPhaseData, type RunRecord } from "../../lib/runHistory";
 import type { EncounterSummary, HistoryFilterActions, HistoryFilters } from "./types";
 import { average, formatDps, formatPercent, formatPullTickDate, formatResult, formatRunDate, formatWing, getResultClass } from "./utils";
-import { HistoryFilterPanel, Metric } from "./shared";
+import { HistoryFilterPanel } from "./shared";
 
 export function EncountersTab({
   filters,
@@ -206,13 +206,6 @@ function EncounterDetail({
             {!isSelectedFromFilter ? " - outside current filters" : ""}
           </p>
         </div>
-      </div>
-
-      <div className="time-stats week-stats time-stats-inline">
-        <Metric label="Kills" value={String(encounter.kills)} />
-        <Metric label="Wipes" value={String(encounter.wipes)} />
-        <Metric label="Best" value={encounter.bestDuration == null ? "N/A" : formatSeconds(encounter.bestDuration)} />
-        <Metric label="Average DPS" value={formatDps(encounter.averageCompDps)} />
       </div>
 
       {phaseStatus?.fetchableRuns ? (
