@@ -1,9 +1,10 @@
+import { Scatter, type ScatterConfig } from "@ant-design/charts";
 import { useEffect, useState } from "react";
 import { getEncounterSortOrder } from "../../data/encounters";
 import { formatSeconds } from "../../lib/format";
 import { hasCurrentPhaseData, type RunRecord } from "../../lib/runHistory";
 import type { EncounterSummary, HistoryFilterActions, HistoryFilters } from "./types";
-import { average, formatDps, formatPercent, formatPullTickDate, formatResult, formatRunDate, formatWing, getResultClass } from "./utils";
+import { average, formatDps, formatPercent, formatResult, formatRunDate, formatWing, getRunStart } from "./utils";
 import { HistoryFilterPanel } from "./shared";
 
 export function EncountersTab({
@@ -183,11 +184,80 @@ function EncounterDetail({
   isSelectedFromFilter: boolean;
   onSelectRun: (run: RunRecord) => void;
 }) {
-  const runs = [...encounter.runsList].sort((a, b) => a.start - b.start);
-  const maxDuration = Math.max(...runs.map((run) => run.duration), 1);
+  const runs = [...encounter.runsList].sort((a, b) => getRunStart(a) - getRunStart(b));
   const phaseSummaries = summarizeEncounterPhases(runs);
   const showAverageBossDps = new Set(runs.map((run) => run.weekKey)).size > 1;
   const [isRunListExpanded, setIsRunListExpanded] = useState(false);
+  const pullHistoryChartData = runs.map((run, index) => buildPullHistoryPoint(run, index));
+  const pullHistoryChartConfig: ScatterConfig = {
+    data: pullHistoryChartData,
+    xField: "startedAt",
+    yField: "durationSeconds",
+    colorField: "resultLabel",
+    shapeField: "resultLabel",
+    keyField: "id",
+    sizeField: () => 6,
+    height: 280,
+    paddingBottom: 72,
+    paddingLeft: 72,
+    scale: {
+      x: { type: "time" },
+      y: { nice: true, min: 0 },
+      color: { range: [PULL_RESULT_COLORS.Kill, PULL_RESULT_COLORS.Wipe, PULL_RESULT_COLORS.Unknown] },
+      shape: { range: ["circle", "diamond", "triangle"] },
+    },
+    axis: {
+      x: {
+        title: "Pull Date",
+        line: true,
+        tick: true,
+        tickCount: Math.min(6, Math.max(2, pullHistoryChartData.length)),
+        labelAutoRotate: false,
+        labelFormatter: (value: string) => formatPullHistoryAxisLabel(Number(value)),
+        labelFill: "rgba(255, 255, 255, 0.72)",
+        titleFill: "rgba(255, 255, 255, 0.88)",
+        lineStroke: "rgba(255, 255, 255, 0.18)",
+        tickStroke: "rgba(255, 255, 255, 0.18)",
+      },
+      y: {
+        title: "Pull Duration",
+        line: true,
+        tick: true,
+        grid: true,
+        labelFormatter: (value: string) => formatSeconds(Number(value)),
+        labelFill: "rgba(255, 255, 255, 0.72)",
+        titleFill: "rgba(255, 255, 255, 0.88)",
+        lineStroke: "rgba(255, 255, 255, 0.18)",
+        tickStroke: "rgba(255, 255, 255, 0.18)",
+        gridStroke: "rgba(255, 255, 255, 0.08)",
+      },
+    },
+    tooltip: {
+      title: "startedAtLabel",
+      items: [
+        { field: "durationLabel", name: "Duration", value: "durationLabel" },
+        { field: "resultLabel", name: "Result", value: "resultLabel" },
+        { field: "dpsLabel", name: "Squad DPS", value: "dpsLabel" },
+      ],
+    },
+    legend: false,
+    style: {
+      lineWidth: 1,
+      stroke: "#141018",
+      fillOpacity: 0.9,
+    },
+    interaction: {
+      elementHighlight: { background: false },
+    },
+    onEvent: (_chart, event) => {
+      if (event?.type !== "click") return;
+
+      const permalink = event?.data?.data?.permalink;
+      if (typeof permalink !== "string" || !permalink) return;
+
+      window.open(permalink, "_blank", "noopener,noreferrer");
+    },
+  };
 
   useEffect(() => {
     setIsRunListExpanded(false);
@@ -278,26 +348,11 @@ function EncounterDetail({
         </div>
 
         <div className="run-trend-scroll">
-          <div className="run-trend" aria-label={`${encounter.bossName} pull duration history. Older pulls are on the left and newer pulls are on the right.`}>
-            {runs.map((run) => (
-              <a
-                className={`trend-dot ${getResultClass(run.success)}`}
-                href={run.permalink}
-                target="_blank"
-                rel="noreferrer"
-                title={`${formatRunDate(run)} - ${formatResult(run.success)} - ${formatSeconds(run.duration)} - ${formatDps(run.compDps)} DPS`}
-                key={run.id}
-              >
-                <span style={{ height: `${Math.max(16, (run.duration / maxDuration) * 100)}%` }} />
-              </a>
-            ))}
-          </div>
-          <div className="trend-x-axis" aria-hidden="true">
-            {runs.map((run) => (
-              <span className="trend-axis-tick" title={formatRunDate(run)} key={`${run.id}:tick`}>
-                {formatPullTickDate(run)}
-              </span>
-            ))}
+          <div
+            className="encounter-history-chart"
+            aria-label={`${encounter.bossName} pull duration history. Older pulls are on the left and newer pulls are on the right.`}
+          >
+            <Scatter {...pullHistoryChartConfig} />
           </div>
         </div>
       </div>
@@ -413,4 +468,50 @@ function formatPhaseTargets(targetNames: string[]): string {
   if (!targetNames.length) return "All targets";
   if (targetNames.length <= 4) return targetNames.join(", ");
   return `${targetNames.slice(0, 3).join(", ")}, +${targetNames.length - 3} more`;
+}
+
+type PullHistoryPoint = {
+  id: string;
+  startedAt: Date;
+  startedAtLabel: string;
+  durationSeconds: number;
+  durationLabel: string;
+  resultLabel: "Kill" | "Wipe" | "Unknown";
+  dpsLabel: string;
+  permalink: string;
+};
+
+const PULL_RESULT_COLORS: Record<PullHistoryPoint["resultLabel"], string> = {
+  Kill: "rgba(141, 230, 177, 0.95)",
+  Wipe: "rgba(255, 120, 120, 0.95)",
+  Unknown: "rgba(155, 199, 255, 0.95)",
+};
+
+function buildPullHistoryPoint(run: RunRecord, index: number): PullHistoryPoint {
+  const startedAt = new Date(getRunStart(run) * 1000);
+
+  return {
+    id: `${run.id}:${index}`,
+    startedAt,
+    startedAtLabel: formatRunDate(run),
+    durationSeconds: run.duration,
+    durationLabel: formatSeconds(run.duration),
+    resultLabel: getPullHistoryResultLabel(run.success),
+    dpsLabel: formatDps(run.compDps),
+    permalink: run.permalink,
+  };
+}
+
+function getPullHistoryResultLabel(success: boolean | null): PullHistoryPoint["resultLabel"] {
+  if (success == null) return "Unknown";
+  return success ? "Kill" : "Wipe";
+}
+
+function formatPullHistoryAxisLabel(timestamp: number): string {
+  if (!Number.isFinite(timestamp)) return "";
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(timestamp));
 }

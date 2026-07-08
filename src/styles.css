@@ -765,55 +765,23 @@ textarea:focus {
 }
 
 .run-trend-scroll {
-  overflow-x: auto;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 0.75rem;
   padding: 0.65rem;
   background: rgba(0, 0, 0, 0.16);
 }
 
-.run-trend {
-  display: flex;
-  align-items: end;
-  gap: 0.35rem;
-  min-height: 90px;
-  width: max-content;
-  min-width: 100%;
+.encounter-history-chart {
+  min-height: 280px;
 }
 
-.trend-dot {
-  display: flex;
-  align-items: end;
-  justify-content: center;
-  flex: 0 0 4.25rem;
-  height: 68px;
-  border-radius: 999px;
+.encounter-history-chart > div {
+  width: 100%;
 }
 
-.trend-dot span {
-  display: block;
-  width: 0.9rem;
-  min-height: 0.55rem;
-  border-radius: inherit;
-}
-
-.trend-x-axis {
-  display: flex;
-  gap: 0.35rem;
-  width: max-content;
-  min-width: 100%;
-  margin-top: 0.45rem;
-  padding-top: 0.45rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.trend-axis-tick {
-  flex: 0 0 4.25rem;
-  color: var(--muted);
-  font-size: 0.72rem;
-  line-height: 1.15;
-  text-align: center;
-  white-space: normal;
+.encounter-history-chart canvas {
+  cursor: pointer;
 }
 
 .trend-dot.kill span,
