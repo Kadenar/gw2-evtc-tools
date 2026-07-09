@@ -1,60 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { getEncounterSortOrder } from "../../data/encounters";
-import { formatSeconds } from "../../lib/format";
-import { compactFieldClass, cx, fieldClass, overviewGridClass, panelClass, sectionHeadingClass, statGridClass, summaryCardClass, tableWrapClass } from "../../lib/ui";
-import { EmptyCard } from "../ui/empty-card";
-import { AppSelect } from "../ui/app-select";
-import { hasCurrentPhaseData, type RunRecord, type WeekSummary } from "../../lib/runHistory";
-import type { EncounterSummary, HistoryFilterActions, HistoryFilters, RaidNightSummary } from "./types";
-import {
-  buildRaidNightSummaries,
-  buildTimelineRows,
-  buildWeekWingRows,
-  formatCountDelta,
-  formatDps,
-  formatPercent,
-  formatTimeDelta,
-  formatWing,
-  getRunStart,
-  summarizeEncounters,
-  summarizeRunSet,
-} from "./utils";
-import { HistoryFilterPanel, StatCard } from "./shared";
-
-type DetailTab = "overview" | "encounters" | "downtime" | "players";
-
-type WingWeekDetail = ReturnType<typeof buildWingWeekDetail>;
-type PlayerEncounterEntry = {
-  encounterKey: string;
-  encounter: string;
-  dps: number | null;
-};
-type AggregatedPlayer = {
-  player: { name: string; account: string | null; professions: string[] };
-  dpsValues: number[];
-  encounterValues: Map<string, { encounter: string; values: number[] }>;
-  averageTargetDps: number | null;
-  encounterEntries: PlayerEncounterEntry[];
-  encounterMap: Map<string, number | null>;
-};
-type PlayerAggregate = {
-  averageTargetDps: number | null;
-  encounterEntries: PlayerEncounterEntry[];
-  encounterMap: Map<string, number | null>;
-};
-type PlayerComparisonRow = {
-  key: string;
-  name: string;
-  account: string | null;
-  professions: string[];
-  current: PlayerAggregate | null;
-  previous: PlayerAggregate | null;
-};
-type PlayerEncounterColumn = {
-  encounterKey: string;
-  label: string;
-  isCm: boolean;
-};
+import { type RunRecord, type WeekSummary } from "../../lib/runHistory";
+import type { HistoryFilterActions, HistoryFilters } from "./types";
+import { buildWeekWingRows } from "./utils";
+import { HistoryFilterPanel } from "./shared";
+import { buildDowntimeRows, buildEncounterComparisonRows, buildWingWeekDetail, summarizeWeekTiming } from "./weeks/weekAggregation";
+import { WeekComparisonControls } from "./weeks/WeekComparisonControls";
+import { WeekTimingStats } from "./weeks/WeekTimingStats";
+import { WingPerformanceTable } from "./weeks/WingPerformanceTable";
+import { WingDetailPanel } from "./weeks/WingDetailPanel";
+import { WeeklySummaryGrid } from "./weeks/WeeklySummaryGrid";
 
 const NO_COMPARISON_OPTION = { value: "none", label: "No comparison" } as const;
 
@@ -66,7 +20,6 @@ export function WeeksTab({
   weeks,
   weekRuns,
   onSelectEncounter,
-  onEnsureRunPhaseData,
 }: {
   filters: HistoryFilters;
   filterActions: HistoryFilterActions;
@@ -75,12 +28,10 @@ export function WeeksTab({
   weeks: WeekSummary[];
   weekRuns: RunRecord[];
   onSelectEncounter: (encounterKey: string) => void;
-  onEnsureRunPhaseData: (runs: RunRecord[]) => void;
 }) {
   const [selectedWeekKey, setSelectedWeekKey] = useState<string>(weeks[0]?.weekKey ?? "none");
   const [compareWeekKey, setCompareWeekKey] = useState<string>(weeks[1]?.weekKey ?? "none");
   const [selectedWing, setSelectedWing] = useState<number | null>(null);
-  const [detailTab, setDetailTab] = useState<DetailTab>("overview");
 
   const runsByWeek = useMemo(
     () => new Map(weeks.map((week) => [week.weekKey, weekRuns.filter((run) => run.weekKey === week.weekKey)])),
@@ -90,8 +41,8 @@ export function WeeksTab({
   const compareWeek = compareWeekKey === "none" ? null : weeks.find((week) => week.weekKey === compareWeekKey) ?? null;
   const selectedRuns = selectedWeek ? runsByWeek.get(selectedWeek.weekKey) ?? [] : [];
   const compareRuns = compareWeek ? runsByWeek.get(compareWeek.weekKey) ?? [] : [];
-  const selectedTiming = summarizeWeekTiming(selectedRuns);
-  const compareTiming = summarizeWeekTiming(compareRuns);
+  const selectedTiming = useMemo(() => summarizeWeekTiming(selectedRuns), [selectedRuns]);
+  const compareTiming = useMemo(() => summarizeWeekTiming(compareRuns), [compareRuns]);
   const wingRows = useMemo(() => buildWeekWingRows(selectedRuns, compareRuns), [compareRuns, selectedRuns]);
   const selectedWingDetail = useMemo(() => buildWingWeekDetail(selectedRuns, selectedWing), [selectedRuns, selectedWing]);
   const compareWingDetail = useMemo(() => buildWingWeekDetail(compareRuns, selectedWing), [compareRuns, selectedWing]);
@@ -103,18 +54,8 @@ export function WeeksTab({
     () => buildDowntimeRows(selectedWingDetail?.raidNights ?? [], compareWingDetail?.raidNights ?? []),
     [compareWingDetail?.raidNights, selectedWingDetail?.raidNights],
   );
-  const playerTable = useMemo(
-    () =>
-      buildPlayerComparisonTable(
-        selectedWingDetail?.runList ?? [],
-        compareWingDetail?.runList ?? [],
-        selectedWingDetail?.encounters ?? [],
-        compareWingDetail?.encounters ?? [],
-      ),
-    [compareWingDetail?.encounters, compareWingDetail?.runList, selectedWingDetail?.encounters, selectedWingDetail?.runList],
-  );
   const selectedWeekOptions = useMemo(() => weeks.map((week) => ({ value: week.weekKey, label: week.weekKey })), [weeks]);
-  const compareWeekOptions = useMemo(() => [NO_COMPARISON_OPTION, ...weeks.map((week) => ({ value: week.weekKey, label: week.weekKey }))], [weeks]);
+  const compareWeekOptions = useMemo(() => [NO_COMPARISON_OPTION, ...selectedWeekOptions], [selectedWeekOptions]);
 
   useEffect(() => {
     if (!weeks.length) {
@@ -153,12 +94,6 @@ export function WeeksTab({
     });
   }, [wingRows]);
 
-  useEffect(() => {
-    if (detailTab !== "players") return;
-    if (!selectedWingDetail && !compareWingDetail) return;
-    onEnsureRunPhaseData([...(selectedWingDetail?.runList ?? []), ...(compareWingDetail?.runList ?? [])]);
-  }, [compareWeekKey, detailTab, selectedWeekKey, selectedWing]);
-
   return (
     <>
       <HistoryFilterPanel
@@ -171,766 +106,39 @@ export function WeeksTab({
         showSortFilter={false}
       />
 
-      <div className={panelClass}>
-        <div className={sectionHeadingClass}>
-          <div>
-            <h3 className="mb-3 mt-0 text-[1.25rem]">Week comparison</h3>
-            <p className="muted">Choose the saved weeks to compare.</p>
-          </div>
-        </div>
-        <div className="grid items-end gap-[0.9rem] [grid-template-columns:minmax(0,1fr)_minmax(140px,160px)_minmax(0,1fr)] max-nav:grid-cols-1">
-          <label className={cx(fieldClass, compactFieldClass, "m-0 max-w-none")}>
-            <span className="text-muted">Selected week</span>
-            <AppSelect value={selectedWeekKey} onValueChange={setSelectedWeekKey} options={selectedWeekOptions} />
-          </label>
-          <div className={cx(fieldClass, "m-0")}>
-            <span className="text-muted">Swap</span>
-            <button
-              type="button"
-              className="inline-flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl border border-line bg-base-100 px-3.5 text-center text-[0.92rem] font-black text-fg transition-[border-color,box-shadow,background-color] hover:border-primary/45 hover:bg-primary/10 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:border-line disabled:bg-base-200 disabled:text-muted"
-              disabled={!selectedWeek || !compareWeek}
-              onClick={() => {
-                if (!selectedWeek || !compareWeek) return;
-                setSelectedWeekKey(compareWeek.weekKey);
-                setCompareWeekKey(selectedWeek.weekKey);
-              }}
-              aria-label="Swap selected and comparison weeks"
-            >
-              Swap weeks
-            </button>
-          </div>
-          <label className={cx(fieldClass, compactFieldClass, "m-0 max-w-none")}>
-            <span className="text-muted">Compare against</span>
-            <AppSelect value={compareWeekKey} onValueChange={setCompareWeekKey} options={compareWeekOptions} />
-          </label>
-        </div>
-      </div>
-
-      <div className={panelClass}>
-        <div className={sectionHeadingClass}>
-          <div>
-            <h3 className="mb-3 mt-0 text-[1.25rem]">{selectedWeek ? `Comparing ${selectedWeek.weekKey}` : "Week comparison"}</h3>
-            <p className="muted">{compareWeek ? `Against ${compareWeek.weekKey}` : "Select a second week to compare against."}</p>
-          </div>
-        </div>
-        {selectedWeek ? (
-          <div className={statGridClass}>
-            <StatCard
-              label="Total"
-              value={formatSeconds(selectedTiming.totalTime)}
-              detail={formatTimeDelta(selectedTiming.totalTime, compareWeek ? compareTiming.totalTime : undefined)}
-            />
-            <StatCard
-              label="Combat"
-              value={formatSeconds(selectedTiming.combatTime)}
-              detail={formatTimeDelta(selectedTiming.combatTime, compareWeek ? compareTiming.combatTime : undefined)}
-            />
-            <StatCard
-              label="Downtime"
-              value={formatSeconds(selectedTiming.downtime)}
-              detail={formatTimeDelta(selectedTiming.downtime, compareWeek ? compareTiming.downtime : undefined)}
-            />
-            <StatCard
-              label="Wipes"
-              value={String(selectedWeek.wipes)}
-              detail={formatCountDelta(selectedWeek.wipes, compareWeek?.wipes, "fewer")}
-            />
-          </div>
-        ) : (
-          <EmptyCard title="No weeks match" description="The current filters remove every saved week. Change the filters or load more run history." />
-        )}
-      </div>
-
-      <div className={panelClass}>
-        <div className={sectionHeadingClass}>
-          <div>
-            <h3 className="mb-3 mt-0 text-[1.25rem]">Wing performance</h3>
-            <p className="muted">
-              {selectedWeek ? `Click a wing to inspect encounter, downtime, and player detail.` : "Select a week to compare wing performance."}
-            </p>
-          </div>
-        </div>
-        {selectedWeek ? (
-          <div className={tableWrapClass}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Wing</th>
-                  <th>{selectedWeek.weekKey}</th>
-                  <th>{compareWeek?.weekKey ?? "Compare"}</th>
-                  <th>Change</th>
-                  <th>Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {wingRows.map((row) => (
-                  <tr className={cx("cursor-pointer hover:bg-primary/8", selectedWing === row.wing && "bg-primary/8")} onClick={() => setSelectedWing(row.wing)} key={row.wing}>
-                    <td>Wing {row.wing}</td>
-                    <td>{row.current == null ? "N/A" : formatSeconds(row.current)}</td>
-                    <td>{row.previous == null ? "N/A" : formatSeconds(row.previous)}</td>
-                    <td>{row.change}</td>
-                    <td>{row.note}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyCard title="No week selected" description="Pick a saved week to compare wing performance." />
-        )}
-      </div>
-
-      <div className={panelClass}>
-        <div className={sectionHeadingClass}>
-          <div>
-            <h3 className="mb-3 mt-0 text-[1.25rem]">Selected wing detail</h3>
-            <p className="muted">
-              {selectedWing != null
-                ? `${formatWing(selectedWing)}${selectedWeek ? ` - ${selectedWeek.weekKey}` : ""}${compareWeek ? ` vs ${compareWeek.weekKey}` : ""}`
-                : "Pick a wing from the comparison table above."}
-            </p>
-          </div>
-        </div>
-
-        {selectedWing != null && (selectedWingDetail || compareWingDetail) ? (
-          <>
-            <div role="tablist" className="tabs tabs-box">
-              {(["overview", "encounters", "downtime", "players"] as const).map((tab) => (
-                <button
-                  type="button"
-                  role="tab"
-                  className={`tab ${detailTab === tab ? "tab-active" : ""}`}
-                  aria-selected={detailTab === tab}
-                  onClick={() => setDetailTab(tab)}
-                  key={tab}
-                >
-                  {formatDetailTabLabel(tab)}
-                </button>
-              ))}
-            </div>
-
-            {detailTab === "overview" ? (
-              <WingOverviewPanel
-                selectedWeek={selectedWeek}
-                compareWeek={compareWeek}
-                selectedDetail={selectedWingDetail}
-                compareDetail={compareWingDetail}
-              />
-            ) : null}
-
-            {detailTab === "encounters" ? (
-              <WingEncounterPanel
-                selectedWeek={selectedWeek}
-                compareWeek={compareWeek}
-                rows={encounterRows}
-                onSelectEncounter={onSelectEncounter}
-              />
-            ) : null}
-
-            {detailTab === "downtime" ? (
-              <WingDowntimePanel selectedWeek={selectedWeek} compareWeek={compareWeek} rows={downtimeRows} />
-            ) : null}
-
-            {detailTab === "players" ? (
-              <WingPlayersPanel
-                selectedWeek={selectedWeek}
-                compareWeek={compareWeek}
-                encounterColumns={playerTable.encounterColumns}
-                rows={playerTable.rows}
-                selectedRuns={selectedWingDetail?.runList ?? []}
-                compareRuns={compareWingDetail?.runList ?? []}
-              />
-            ) : null}
-          </>
-        ) : (
-          <EmptyCard title="No wing detail available" description="Select a wing with saved data to compare encounters, downtime, and player performance." />
-        )}
-      </div>
-
-      <div className={panelClass}>
-        <div className={sectionHeadingClass}>
-          <h3 className="mb-3 mt-0 text-[1.25rem]">Weekly summaries</h3>
-        </div>
-        <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
-          {weeks.map((week) => (
-            <WeekSummaryCard
-              week={week}
-              runs={runsByWeek.get(week.weekKey) ?? []}
-              isSelected={selectedWeek?.weekKey === week.weekKey}
-              isCompare={compareWeek?.weekKey === week.weekKey}
-              key={week.weekKey}
-            />
-          ))}
-        </div>
-      </div>
-    </>
-  );
-}
-
-function WingOverviewPanel({
-  selectedWeek,
-  compareWeek,
-  selectedDetail,
-  compareDetail,
-}: {
-  selectedWeek: WeekSummary | null;
-  compareWeek: WeekSummary | null;
-  selectedDetail: WingWeekDetail;
-  compareDetail: WingWeekDetail;
-}) {
-  return (
-    <div className={overviewGridClass}>
-      <article className={summaryCardClass}>
-        <span className="text-muted">{selectedWeek?.weekKey ?? "Selected week"}</span>
-        <strong className="wrap-anywhere text-[1.25rem]">{selectedDetail ? formatSeconds(selectedDetail.totalTime) : "N/A"}</strong>
-        <small className="text-muted">{selectedDetail?.encounterLabel ?? "No selected-week data for this wing"}</small>
-        <small className="text-muted">
-          Combat {selectedDetail ? formatSeconds(selectedDetail.combatTime) : "N/A"} | Downtime {selectedDetail ? formatSeconds(selectedDetail.downtime) : "N/A"} |{" "}
-          {selectedDetail ? `${selectedDetail.kills} kills / ${selectedDetail.wipes} wipes` : "No data"}
-        </small>
-      </article>
-      <article className={summaryCardClass}>
-        <span className="text-muted">{compareWeek?.weekKey ?? "Comparison"}</span>
-        <strong className="wrap-anywhere text-[1.25rem]">{compareDetail ? formatSeconds(compareDetail.totalTime) : "N/A"}</strong>
-        <small className="text-muted">{compareDetail?.encounterLabel ?? "No comparison selected"}</small>
-        <small className="text-muted">
-          Combat {compareDetail ? formatSeconds(compareDetail.combatTime) : "N/A"} | Downtime {compareDetail ? formatSeconds(compareDetail.downtime) : "N/A"} |{" "}
-          {compareDetail ? `${compareDetail.kills} kills / ${compareDetail.wipes} wipes` : "No data"}
-        </small>
-      </article>
-      <article className={summaryCardClass}>
-        <span className="text-muted">Time change</span>
-        <strong className="wrap-anywhere text-[1.25rem]">{formatTimeDelta(selectedDetail?.totalTime, compareDetail?.totalTime)}</strong>
-        <small className="text-muted">{formatTimeDelta(selectedDetail?.combatTime, compareDetail?.combatTime)} combat</small>
-        <small className="text-muted">{formatTimeDelta(selectedDetail?.downtime, compareDetail?.downtime)} downtime</small>
-      </article>
-      <article className={summaryCardClass}>
-        <span className="text-muted">Squad DPS</span>
-        <strong className="wrap-anywhere text-[1.25rem]">{formatDps(selectedDetail?.averageCompDps ?? null)}</strong>
-        <small className="text-muted">{selectedWeek?.weekKey ?? "Selected"} average comp DPS</small>
-        <small className="text-muted">{compareWeek ? `${compareWeek.weekKey}: ${formatDps(compareDetail?.averageCompDps ?? null)}` : "No comparison selected"}</small>
-      </article>
-    </div>
-  );
-}
-
-function WingEncounterPanel({
-  selectedWeek,
-  compareWeek,
-  rows,
-  onSelectEncounter,
-}: {
-  selectedWeek: WeekSummary | null;
-  compareWeek: WeekSummary | null;
-  rows: Array<{
-    encounterKey: string;
-    bossName: string;
-    isCm: boolean;
-    current: EncounterSummary | null;
-    previous: EncounterSummary | null;
-    change: string;
-  }>;
-  onSelectEncounter: (encounterKey: string) => void;
-}) {
-  if (!rows.length) {
-    return <EmptyCard title="No encounters logged" description="This wing has no saved encounters for the selected comparison." />;
-  }
-
-  return (
-    <div className={tableWrapClass}>
-      <table>
-        <thead>
-          <tr>
-            <th>Encounter</th>
-            <th>{selectedWeek?.weekKey ?? "Selected"} kills / wipes</th>
-            <th>Best</th>
-            <th>Avg DPS</th>
-            <th>{compareWeek?.weekKey ?? "Compare"} kills / wipes</th>
-            <th>Best</th>
-            <th>Avg DPS</th>
-            <th>Change</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr onClick={() => onSelectEncounter(row.encounterKey)} key={row.encounterKey}>
-              <td>
-                {row.bossName}
-                {row.isCm ? <span className="badge badge-sm badge-outline ml-1">CM</span> : null}
-              </td>
-              <td>{formatEncounterRecord(row.current)}</td>
-              <td>{formatEncounterBest(row.current)}</td>
-              <td>{formatDps(row.current?.averageCompDps ?? null)}</td>
-              <td>{formatEncounterRecord(row.previous)}</td>
-              <td>{formatEncounterBest(row.previous)}</td>
-              <td>{formatDps(row.previous?.averageCompDps ?? null)}</td>
-              <td>{row.change}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function WingDowntimePanel({
-  selectedWeek,
-  compareWeek,
-  rows,
-}: {
-  selectedWeek: WeekSummary | null;
-  compareWeek: WeekSummary | null;
-  rows: Array<{
-    key: string;
-    label: string;
-    current: RaidNightSummary | null;
-    previous: RaidNightSummary | null;
-    change: string;
-    note: string;
-  }>;
-}) {
-  if (!rows.length) {
-    return <EmptyCard title="No downtime data" description="This wing does not have enough saved raid-night data to compare downtime." />;
-  }
-
-  return (
-    <div className={tableWrapClass}>
-      <table>
-        <thead>
-          <tr>
-            <th>Raid night</th>
-            <th>{selectedWeek?.weekKey ?? "Selected"} total</th>
-            <th>{selectedWeek?.weekKey ?? "Selected"} downtime</th>
-            <th>{compareWeek?.weekKey ?? "Compare"} total</th>
-            <th>{compareWeek?.weekKey ?? "Compare"} downtime</th>
-            <th>Change</th>
-            <th>Largest gap</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.key}>
-              <td>{row.label}</td>
-              <td>{row.current ? formatSeconds(row.current.totalTime) : "N/A"}</td>
-              <td>{row.current ? formatSeconds(row.current.downtime) : "N/A"}</td>
-              <td>{row.previous ? formatSeconds(row.previous.totalTime) : "N/A"}</td>
-              <td>{row.previous ? formatSeconds(row.previous.downtime) : "N/A"}</td>
-              <td>{row.change}</td>
-              <td>{row.note}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function WingPlayersPanel({
-  selectedWeek,
-  compareWeek,
-  encounterColumns,
-  rows,
-  selectedRuns,
-  compareRuns,
-}: {
-  selectedWeek: WeekSummary | null;
-  compareWeek: WeekSummary | null;
-  encounterColumns: PlayerEncounterColumn[];
-  rows: PlayerComparisonRow[];
-  selectedRuns: RunRecord[];
-  compareRuns: RunRecord[];
-}) {
-  const selectedCached = selectedRuns.filter((run) => hasCurrentPhaseData(run.phaseData)).length;
-  const compareCached = compareRuns.filter((run) => hasCurrentPhaseData(run.phaseData)).length;
-
-  if (!rows.length) {
-    return (
-      <EmptyCard
-        title="No cached player DPS yet"
-        description={
-          <>
-            Loaded {selectedCached}/{selectedRuns.length} run{selectedRuns.length === 1 ? "" : "s"}
-            {compareWeek ? ` for ${selectedWeek?.weekKey ?? "selected"} and ${compareCached}/${compareRuns.length} for ${compareWeek.weekKey}` : ""}.
-          </>
-        }
+      <WeekComparisonControls
+        selectedWeekKey={selectedWeekKey}
+        compareWeekKey={compareWeekKey}
+        selectedWeek={selectedWeek}
+        compareWeek={compareWeek}
+        selectedWeekOptions={selectedWeekOptions}
+        compareWeekOptions={compareWeekOptions}
+        onSelectedChange={setSelectedWeekKey}
+        onCompareChange={setCompareWeekKey}
       />
-    );
-  }
 
-  return (
-    <>
-      <p className="muted">
-        Loaded {selectedCached}/{selectedRuns.length} run{selectedRuns.length === 1 ? "" : "s"} for {selectedWeek?.weekKey ?? "selected"}
-        {compareWeek ? ` and ${compareCached}/${compareRuns.length} for ${compareWeek.weekKey}` : ""}. Each cell shows current, delta, and comparison DPS.
-      </p>
-      <div className={tableWrapClass}>
-        <table className="min-w-full [&_td]:align-top [&_td]:px-3 [&_td]:py-[0.65rem] [&_th]:px-3 [&_th]:py-[0.65rem]">
-          <thead>
-            <tr>
-              <th className="min-w-[16rem]">Player</th>
-              <th className="min-w-[11rem]">
-                Wing Avg
-                <small className="block text-[0.74rem] font-normal text-muted">current / delta / compare</small>
-              </th>
-              {encounterColumns.map((column) => (
-                <th className="min-w-[11rem]" key={column.encounterKey}>
-                  <span>{column.label}</span>
-                  {column.isCm ? <span className="badge badge-sm badge-outline ml-1 align-middle">CM</span> : null}
-                  <small className="block text-[0.74rem] font-normal text-muted">current / delta / compare</small>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.key}>
-                <td>
-                  <div className="grid gap-[0.1rem] leading-tight">
-                    <strong className="text-[0.95rem]">{row.name}</strong>
-                    <small className="block text-[0.78rem] leading-[1.2]">{[row.professions.join(", "), row.account].filter(Boolean).join(" | ") || "No account data"}</small>
-                  </div>
-                </td>
-                <td>{renderPlayerComparisonCell(row.current?.averageTargetDps ?? null, row.previous?.averageTargetDps ?? null)}</td>
-                {encounterColumns.map((column) => (
-                  <td key={`${row.key}:${column.encounterKey}`}>
-                    {renderPlayerComparisonCell(row.current?.encounterMap.get(column.encounterKey) ?? null, row.previous?.encounterMap.get(column.encounterKey) ?? null)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <WeekTimingStats selectedWeek={selectedWeek} compareWeek={compareWeek} selectedTiming={selectedTiming} compareTiming={compareTiming} />
+
+      <WingPerformanceTable
+        selectedWeek={selectedWeek}
+        compareWeek={compareWeek}
+        rows={wingRows}
+        selectedWing={selectedWing}
+        onSelectWing={setSelectedWing}
+      />
+
+      <WingDetailPanel
+        selectedWeek={selectedWeek}
+        compareWeek={compareWeek}
+        selectedWing={selectedWing}
+        selectedDetail={selectedWingDetail}
+        compareDetail={compareWingDetail}
+        encounterRows={encounterRows}
+        downtimeRows={downtimeRows}
+        onSelectEncounter={onSelectEncounter}
+      />
+
+      <WeeklySummaryGrid weeks={weeks} runsByWeek={runsByWeek} selectedWeek={selectedWeek} compareWeek={compareWeek} />
     </>
   );
-}
-
-function WeekSummaryCard({
-  week,
-  runs,
-  isSelected,
-  isCompare,
-}: {
-  week: WeekSummary;
-  runs: RunRecord[];
-  isSelected: boolean;
-  isCompare: boolean;
-}) {
-  const timing = summarizeWeekTiming(runs);
-  const weekLabel = formatWeekSummaryLabel(week.weekKey, runs);
-
-  return (
-    <article
-      className={cx(
-        "grid gap-[0.8rem] rounded-xl border border-line bg-surface p-[0.85rem]",
-        isSelected && "border-warning/45 bg-warning/10",
-        isCompare && "border-info/40 bg-info/10",
-        isSelected && isCompare && "border-primary/50 bg-primary/10",
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <span className="eyebrow">{weekLabel}</span>
-          <h4 className="mb-0 mt-[0.05rem] text-[1.05rem]">{week.runs} saved runs</h4>
-        </div>
-        <div className="grid justify-items-end gap-[0.35rem]">
-          <span className="badge badge-outline">{formatPercent(week.killRate)} kill rate</span>
-          {isSelected ? <span className="text-[0.82rem] font-black uppercase text-accent-2 tracking-[0.04em]">Selected</span> : null}
-          {isCompare ? <span className="text-[0.82rem] font-black uppercase text-accent-2 tracking-[0.04em]">Compare</span> : null}
-        </div>
-      </div>
-
-      <div className="history-bar" aria-label={`Kill rate ${formatPercent(week.killRate)}`}>
-        <span style={{ width: `${Math.round((week.killRate ?? 0) * 100)}%` }} />
-      </div>
-
-      <div className="flex flex-wrap gap-x-4 gap-y-[0.45rem] text-[0.92rem] text-muted">
-        <span>Total {formatSeconds(timing.totalTime)}</span>
-        <span>Combat {formatSeconds(timing.combatTime)}</span>
-        <span>Downtime {formatSeconds(timing.downtime)}</span>
-        <span>Wipes {week.wipes}</span>
-      </div>
-    </article>
-  );
-}
-
-function summarizeWeekTiming(runs: RunRecord[]): { combatTime: number; downtime: number; totalTime: number } {
-  return buildRaidNightSummaries(runs).reduce(
-    (summary, night) => ({
-      combatTime: summary.combatTime + night.combatTime,
-      downtime: summary.downtime + night.downtime,
-      totalTime: summary.totalTime + night.totalTime,
-    }),
-    { combatTime: 0, downtime: 0, totalTime: 0 },
-  );
-}
-
-function buildWingWeekDetail(runs: RunRecord[], wing: number | null) {
-  if (wing == null) return null;
-
-  const wingRuns = runs.filter((run) => run.wing === wing);
-  if (!wingRuns.length) return null;
-
-  const encounterStats = summarizeRunSet(wingRuns);
-  const encounterLabel = summarizeEncounters(wingRuns)
-    .sort(compareEncounterSummaries)
-    .map((encounter) => shortEncounterName(encounter.bossName))
-    .join(", ");
-
-  return {
-    wing,
-    runList: wingRuns,
-    encounters: summarizeEncounters(wingRuns).sort(compareEncounterSummaries),
-    raidNights: buildRaidNightSummaries(wingRuns).sort((left, right) => left.start - right.start),
-    encounterLabel: encounterLabel || "No encounters logged",
-    ...encounterStats,
-    ...summarizeWeekTiming(wingRuns),
-  };
-}
-
-function buildEncounterComparisonRows(current: EncounterSummary[], previous: EncounterSummary[]) {
-  const currentByKey = new Map(current.map((encounter) => [encounter.encounterKey, encounter]));
-  const previousByKey = new Map(previous.map((encounter) => [encounter.encounterKey, encounter]));
-  const all = Array.from(new Set([...currentByKey.keys(), ...previousByKey.keys()]))
-    .map((encounterKey) => currentByKey.get(encounterKey) ?? previousByKey.get(encounterKey))
-    .filter((encounter): encounter is EncounterSummary => encounter != null)
-    .sort(compareEncounterSummaries);
-
-  return all.map((encounter) => {
-    const currentEncounter = currentByKey.get(encounter.encounterKey) ?? null;
-    const previousEncounter = previousByKey.get(encounter.encounterKey) ?? null;
-    return {
-      encounterKey: encounter.encounterKey,
-      bossName: encounter.bossName,
-      isCm: encounter.isCm,
-      current: currentEncounter,
-      previous: previousEncounter,
-      change: formatTimeDelta(getComparableEncounterDuration(currentEncounter), getComparableEncounterDuration(previousEncounter)),
-    };
-  });
-}
-
-function buildDowntimeRows(current: RaidNightSummary[], previous: RaidNightSummary[]) {
-  return Array.from({ length: Math.max(current.length, previous.length) }, (_, index) => {
-    const currentNight = current[index] ?? null;
-    const previousNight = previous[index] ?? null;
-
-    return {
-      key: `${currentNight?.key ?? "none"}:${previousNight?.key ?? "none"}:${index}`,
-      label: currentNight?.label ?? previousNight?.label ?? `Night ${index + 1}`,
-      current: currentNight,
-      previous: previousNight,
-      change: formatTimeDelta(currentNight?.downtime, previousNight?.downtime),
-      note: largestGapLabel(currentNight) ?? largestGapLabel(previousNight) ?? "No downtime segments",
-    };
-  }).filter((row) => row.current || row.previous);
-}
-
-function buildPlayerComparisonTable(
-  currentRuns: RunRecord[],
-  previousRuns: RunRecord[],
-  currentEncounters: EncounterSummary[],
-  previousEncounters: EncounterSummary[],
-) {
-  const currentByPlayer = aggregatePlayers(currentRuns);
-  const previousByPlayer = aggregatePlayers(previousRuns);
-  const currentByEncounter = new Map(currentEncounters.map((encounter) => [encounter.encounterKey, encounter]));
-  const previousByEncounter = new Map(previousEncounters.map((encounter) => [encounter.encounterKey, encounter]));
-  const encounterColumns = Array.from(new Set([...currentByEncounter.keys(), ...previousByEncounter.keys()]))
-    .map((encounterKey) => currentByEncounter.get(encounterKey) ?? previousByEncounter.get(encounterKey))
-    .filter((encounter): encounter is EncounterSummary => encounter != null)
-    .sort(compareEncounterSummaries)
-    .map((encounter) => ({
-      encounterKey: encounter.encounterKey,
-      label: shortEncounterName(encounter.bossName),
-      isCm: encounter.isCm,
-    }));
-  const keys = Array.from(new Set([...currentByPlayer.keys(), ...previousByPlayer.keys()]));
-
-  const rows = keys
-    .map((key) => {
-      const current = currentByPlayer.get(key) ?? null;
-      const previous = previousByPlayer.get(key) ?? null;
-      const player = current?.player ?? previous?.player;
-      if (!player) return null;
-
-      return {
-        key,
-        name: player.name,
-        account: player.account,
-        professions: player.professions,
-        current: current
-          ? { averageTargetDps: current.averageTargetDps, encounterEntries: current.encounterEntries, encounterMap: current.encounterMap }
-          : null,
-        previous: previous
-          ? { averageTargetDps: previous.averageTargetDps, encounterEntries: previous.encounterEntries, encounterMap: previous.encounterMap }
-          : null,
-      };
-    })
-    .filter((row): row is NonNullable<typeof row> => row != null)
-    .sort(
-      (left, right) =>
-        (right.current?.averageTargetDps ?? right.previous?.averageTargetDps ?? -1)
-        - (left.current?.averageTargetDps ?? left.previous?.averageTargetDps ?? -1),
-    );
-
-  return { encounterColumns, rows };
-}
-
-function aggregatePlayers(runs: RunRecord[]) {
-  const byPlayer = new Map<string, AggregatedPlayer>();
-
-  runs
-    .slice()
-    .sort((left, right) => getRunStart(left) - getRunStart(right))
-    .forEach((run) => {
-      if (!run.phaseData || !hasCurrentPhaseData(run.phaseData)) return;
-
-      run.phaseData.players.forEach((player) => {
-        const key = player.account ?? player.name;
-        const dps = player.targetDps ?? player.squadDps;
-        if (dps == null) return;
-
-        const existing = byPlayer.get(key) ?? {
-          player: { name: player.name, account: player.account, professions: [] as string[] },
-          dpsValues: [],
-          encounterValues: new Map<string, { encounter: string; values: number[] }>(),
-          averageTargetDps: null,
-          encounterEntries: [],
-          encounterMap: new Map<string, number | null>(),
-        };
-
-        if (player.profession && !existing.player.professions.includes(player.profession)) {
-          existing.player.professions.push(player.profession);
-        }
-
-        existing.dpsValues.push(dps);
-        const encounterEntry = existing.encounterValues.get(run.encounterKey) ?? {
-          encounter: shortEncounterName(run.bossName),
-          values: [],
-        };
-        encounterEntry.values.push(dps);
-        existing.encounterValues.set(run.encounterKey, encounterEntry);
-        byPlayer.set(key, existing);
-      });
-    });
-
-  for (const [key, value] of byPlayer.entries()) {
-    const encounterEntries = Array.from(value.encounterValues.entries())
-      .map(([encounterKey, entry]) => ({ encounterKey, encounter: entry.encounter, dps: average(entry.values) }))
-      .sort((left, right) => left.encounter.localeCompare(right.encounter));
-
-    byPlayer.set(key, {
-      ...value,
-      averageTargetDps: average(value.dpsValues),
-      encounterEntries,
-      encounterMap: new Map(encounterEntries.map((entry) => [entry.encounterKey, entry.dps])),
-    });
-  }
-
-  return byPlayer;
-}
-
-function largestGapLabel(night: RaidNightSummary | null): string | null {
-  if (!night) return null;
-
-  const gap = buildTimelineRows(night)
-    .filter((row): row is Extract<ReturnType<typeof buildTimelineRows>[number], { type: "gap" }> => row.type === "gap")
-    .sort((left, right) => right.seconds - left.seconds)[0];
-
-  if (!gap) return "No downtime segments";
-  return `${gap.label} (${formatSeconds(gap.seconds)})`;
-}
-
-function compareEncounterSummaries(left: EncounterSummary, right: EncounterSummary): number {
-  return getEncounterSortOrder(left.runsList[0]?.bossId ?? null, left.bossName)
-    - getEncounterSortOrder(right.runsList[0]?.bossId ?? null, right.bossName)
-    || left.bossName.localeCompare(right.bossName)
-    || Number(left.isCm) - Number(right.isCm);
-}
-
-function average(values: number[]): number | null {
-  if (!values.length) return null;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
-function getComparableEncounterDuration(encounter: EncounterSummary | null): number | null {
-  if (!encounter) return null;
-  return encounter.bestDuration ?? (encounter.averageDuration > 0 ? encounter.averageDuration : null);
-}
-
-function formatEncounterRecord(encounter: EncounterSummary | null): string {
-  if (!encounter) return "N/A";
-  return `${encounter.kills} kill${encounter.kills === 1 ? "" : "s"} / ${encounter.wipes} wipe${encounter.wipes === 1 ? "" : "s"}`;
-}
-
-function formatEncounterBest(encounter: EncounterSummary | null): string {
-  const duration = getComparableEncounterDuration(encounter);
-  return duration == null ? "N/A" : formatSeconds(duration);
-}
-
-function renderPlayerComparisonCell(current: number | null, previous: number | null) {
-  return (
-    <div className="grid gap-[0.1rem] leading-tight">
-      <strong className="whitespace-nowrap text-[0.92rem]">{formatDps(current)}</strong>
-      <small className={cx("text-[0.78rem] font-black", getPlayerDeltaClass(current, previous))}>{formatPlayerDpsDelta(current, previous)}</small>
-      <small className="whitespace-nowrap text-[0.78rem] text-muted">{formatDps(previous)}</small>
-    </div>
-  );
-}
-
-function formatPlayerDpsDelta(current: number | null, previous: number | null): string {
-  if (current == null && previous == null) return "N/A";
-  if (current == null) return "No current";
-  if (previous == null) return "No previous";
-  if (!Number.isFinite(current) || !Number.isFinite(previous)) return "N/A";
-
-  const delta = current - previous;
-  if (Math.abs(delta) < 0.5) return "same";
-  if (Math.abs(previous) < 0.5) return `${delta > 0 ? "+" : ""}${formatDps(delta)}`;
-
-  return `${delta > 0 ? "+" : ""}${((delta / previous) * 100).toFixed(1)}%`;
-}
-
-function getPlayerDeltaClass(current: number | null, previous: number | null): string {
-  if (current == null || previous == null || !Number.isFinite(current) || !Number.isFinite(previous)) {
-    return "text-muted";
-  }
-
-  const delta = current - previous;
-  if (Math.abs(delta) < 0.5) return "text-muted";
-  return delta > 0 ? "text-[color:var(--color-success)]" : "text-[color:var(--color-danger)]";
-}
-
-function shortEncounterName(name: string): string {
-  return name.replace(/^Bandit Trio - /, "Trio ").replace(/\s+CM$/, "");
-}
-
-function formatDetailTabLabel(tab: DetailTab): string {
-  if (tab === "overview") return "Overview";
-  if (tab === "encounters") return "Encounters";
-  if (tab === "downtime") return "Downtime";
-  return "Players";
-}
-
-function formatWeekSummaryLabel(weekKey: string, runs: RunRecord[]): string {
-  if (!runs.length) return weekKey;
-
-  const sortedRuns = [...runs].sort((left, right) => getRunStart(left) - getRunStart(right));
-  const firstDate = new Date(getRunStart(sortedRuns[0]) * 1000);
-  const lastDate = new Date(getRunStart(sortedRuns[sortedRuns.length - 1]) * 1000);
-  const monthFormatter = new Intl.DateTimeFormat(undefined, { month: "short" });
-  const dayFormatter = new Intl.DateTimeFormat(undefined, { day: "numeric" });
-
-  const firstMonth = monthFormatter.format(firstDate);
-  const lastMonth = monthFormatter.format(lastDate);
-  const firstDay = dayFormatter.format(firstDate);
-  const lastDay = dayFormatter.format(lastDate);
-
-  let dateLabel = `${firstMonth} ${firstDay}`;
-  if (firstDate.toDateString() !== lastDate.toDateString()) {
-    dateLabel = firstMonth === lastMonth ? `${firstMonth} ${firstDay}-${lastDay}` : `${firstMonth} ${firstDay}-${lastMonth} ${lastDay}`;
-  }
-
-  return `${weekKey} - ${dateLabel}`;
 }

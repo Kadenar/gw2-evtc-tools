@@ -147,7 +147,7 @@ export function TriggerRewriter() {
               </div>
             )}
 
-            <details className="my-4 rounded-2xl border border-line bg-black/[0.16] p-[0.85rem]">
+            <details className="my-4 rounded-2xl border border-line bg-black/16 p-[0.85rem]">
               <summary className="cursor-pointer font-extrabold">Advanced header details</summary>
               <label className={cx(fieldClass, compactFieldClass)}>
                 <span className="text-muted">Manual boss-id offset</span>

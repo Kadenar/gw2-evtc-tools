@@ -2,7 +2,7 @@
 
 A static Vite + React website for Guild Wars 2 EVTC/ZEVTC utilities.
 
-It includes two browser-only tools:
+It includes three browser-only tools:
 
 1. **Trigger ID Rewriter**
    - Upload a `.evtc`, `.zevtc`, or zipped EVTC file.
@@ -25,14 +25,32 @@ It includes two browser-only tools:
      - total combat time
    - Export CSV or JSON.
 
+3. **Run History**
+   - Import and manage saved runs from local storage.
+   - View dashboards, wings, encounters, players, weeks, and downtime analytics.
+   - Track player DPS trends, profession usage, and consistency metrics.
+   - Visualize encounter pull histories and wing coverage.
+
 ## Tech stack
 
-- Vite 5
-- React 18
-- TypeScript 5
-- fflate, for client-side zipped/compressed EVTC handling
+- Vite 8, React 19, TypeScript 7 (strict mode)
+- Tailwind CSS 4 + daisyUI 5 for styling
+- Recharts for charts and graphs
+- fflate for client-side zipped/compressed EVTC handling
 - No backend
 - Ready for GitHub Pages
+
+## Code organization
+
+Complex tabs like `PlayersTab` and `EncountersTab` are organized using a folder structure that separates concerns:
+
+- **Tab shell** (`PlayersTab.tsx`) — handles filters, state, and layout coordination at the top level.
+- **Subfolder** (`players/`) — contains:
+  - **React components** (PascalCase, `.tsx`): UI elements like `PlayerMetricsTable.tsx`, `PlayerEncounterChart.tsx`
+  - **Pure logic** (camelCase, `.ts`): Functions like `playerAggregation.ts` (types + data aggregation) and `playerFormat.ts` (formatters) — testable without React
+- **Shared utilities** (`utils.ts`) — helpers used across multiple tabs (e.g., `shortEncounterName`, `compareEncounterSummaries`)
+
+This pattern ensures components are self-contained, logic is reusable and testable, and the codebase remains maintainable as tabs grow.
 
 ## Requirements
 

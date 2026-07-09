@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { formatSeconds } from "../../lib/format";
 import type { RunRecord } from "../../lib/runHistory";
 import {
@@ -13,6 +14,8 @@ import {
 } from "../../lib/ui";
 import { buildSessionTimelineItems, SessionTimelineView } from "../SessionTimeline";
 import { AppSelect, type AppSelectOption } from "../ui/app-select";
+import { Button } from "../ui/button";
+import { CollapsibleTrigger } from "../ui/collapsible";
 import type { HistoryFilterActions, HistoryFilters, RaidNightSummary, ResultFilter, SessionTypeFilter, SortMode } from "./types";
 import {
   formatDps,
@@ -22,7 +25,6 @@ import {
   formatWing,
   getResultBadgeClass,
   getRunSessionType,
-  getRunStart,
 } from "./utils";
 
 export function HistoryFilterPanel({
@@ -32,6 +34,7 @@ export function HistoryFilterPanel({
   wingOptions,
   title,
   showWeekFilter = true,
+  showWingFilter = true,
   showSortFilter = true,
 }: {
   filters: HistoryFilters;
@@ -40,6 +43,7 @@ export function HistoryFilterPanel({
   wingOptions: number[];
   title: string;
   showWeekFilter?: boolean;
+  showWingFilter?: boolean;
   showSortFilter?: boolean;
 }) {
   const { query, weekFilter, wingFilter, resultFilter, cmFilter, sessionTypeFilter, sortMode } = filters;
@@ -98,10 +102,12 @@ export function HistoryFilterPanel({
             <AppSelect value={weekFilter} onValueChange={filterActions.setWeekFilter} options={weekFilterOptions} />
           </label>
         ) : null}
-        <label className={fieldClasses}>
-          <span className="text-muted">Wing</span>
-          <AppSelect value={wingFilter} onValueChange={filterActions.setWingFilter} options={wingFilterOptions} />
-        </label>
+        {showWingFilter ? (
+          <label className={fieldClasses}>
+            <span className="text-muted">Wing</span>
+            <AppSelect value={wingFilter} onValueChange={filterActions.setWingFilter} options={wingFilterOptions} />
+          </label>
+        ) : null}
         <label className={fieldClasses}>
           <span className="text-muted">Result</span>
           <AppSelect value={resultFilter} onValueChange={(value) => filterActions.setResultFilter(value as ResultFilter)} options={resultFilterOptions} />
@@ -167,6 +173,30 @@ export function RaidNightDetail({ night }: { night: RaidNightSummary }) {
       </div>
       {view === "timeline" ? <RunTimeline night={night} /> : <RunList night={night} />}
     </div>
+  );
+}
+
+export function CollapsibleChevronTrigger({
+  open,
+  openLabel,
+  closedLabel,
+}: {
+  open: boolean;
+  openLabel: string;
+  closedLabel: string;
+}) {
+  return (
+    <CollapsibleTrigger asChild>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="justify-between gap-2 px-2 text-[0.82rem] font-black uppercase tracking-[0.04em] text-muted"
+      >
+        <span>{open ? openLabel : closedLabel}</span>
+        <ChevronDown className={cx("size-4 transition-transform duration-200", open && "rotate-180")} />
+      </Button>
+    </CollapsibleTrigger>
   );
 }
 
@@ -252,7 +282,7 @@ export function RunCard({
       </label>
       <button
         type="button"
-        className="grid min-w-0 cursor-pointer gap-[0.1rem] rounded-[0.65rem] border border-transparent bg-transparent p-[0.35rem] text-left text-fg hover:border-primary/50"
+        className="grid min-w-0 cursor-pointer gap-[0.1rem] rounded-4xl border border-transparent bg-transparent p-[0.35rem] text-left text-fg hover:border-primary/50"
         onClick={onSelectEncounter}
       >
         <span className="text-muted">{formatRunDate(run)}</span>

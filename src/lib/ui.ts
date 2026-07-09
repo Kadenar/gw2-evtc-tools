@@ -15,3 +15,5 @@ export const summaryCardClass = "grid min-w-0 gap-[0.15rem] rounded-xl border bo
 export const splitPanelClass = "grid gap-4 [grid-template-columns:minmax(0,1fr)_minmax(320px,0.75fr)] max-nav:grid-cols-1";
 export const toolSplitClass = "grid gap-4 [grid-template-columns:minmax(0,0.95fr)_minmax(360px,1.05fr)] max-nav:grid-cols-1";
 export const runHistoryShellClass = "grid items-start gap-[0.85rem] [grid-template-columns:210px_minmax(0,1fr)] max-nav:grid-cols-1";
+export const swapButtonClass =
+  "inline-flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl border border-line bg-base-100 px-3.5 text-center text-[0.92rem] font-black text-fg transition-[border-color,box-shadow,background-color] hover:border-primary/45 hover:bg-primary/10 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:border-line disabled:bg-base-200 disabled:text-muted";

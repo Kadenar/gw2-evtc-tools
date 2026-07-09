@@ -13,8 +13,7 @@ import {
   summarizeSession,
   uploadLogToDpsReport,
 } from "../lib/dpsReport";
-import { downloadBlob } from "../lib/format";
-import { formatDateTime, formatSeconds } from "../lib/format";
+import { downloadBlob, formatDateTime, formatRunSessionType, formatSeconds, pluralize } from "../lib/format";
 import { RunSessionType, saveSessionLogs } from "../lib/runHistory";
 import { compactFieldClass, cx, fieldClass, inlineActionsClass, panelClass, sectionHeadingClass } from "../lib/ui";
 
@@ -56,7 +55,7 @@ export function SessionTimer() {
   async function fetchLinks() {
     setIsWorking(true);
     setErrors([]);
-    setProgress(`Fetching ${extractedLinks.length} report${extractedLinks.length === 1 ? "" : "s"}...`);
+    setProgress(`Fetching ${extractedLinks.length} ${pluralize(extractedLinks.length, "report")}...`);
 
     const nextLogs: SessionLog[] = [];
     const nextErrors: FetchError[] = [];
@@ -79,7 +78,7 @@ export function SessionTimer() {
   async function uploadFilesToDpsReport() {
     setIsWorking(true);
     setErrors([]);
-    setProgress(`Uploading ${uploadFiles.length} file${uploadFiles.length === 1 ? "" : "s"}...`);
+    setProgress(`Uploading ${uploadFiles.length} ${pluralize(uploadFiles.length, "file")}...`);
 
     const nextLogs: SessionLog[] = [];
     const nextErrors: FetchError[] = [];
@@ -115,7 +114,7 @@ export function SessionTimer() {
     try {
       const result = await saveSessionLogs(summary.logs, runSessionType);
       setHistoryStatus(
-        `Saved ${result.saved} new and updated ${result.updated} existing run${result.updated === 1 ? "" : "s"} as ${formatRunSessionType(runSessionType)}.`,
+        `Saved ${result.saved} new and updated ${result.updated} existing ${pluralize(result.updated, "run")} as ${formatRunSessionType(runSessionType)}.`,
       );
     } catch (err) {
       setHistoryStatus(err instanceof Error ? err.message : "Could not save run history.");
@@ -165,9 +164,9 @@ export function SessionTimer() {
           />
           <div className={inlineActionsClass}>
             <button type="button" className="btn btn-primary" disabled={!extractedLinks.length || isWorking} onClick={fetchLinks}>
-              Fetch {extractedLinks.length || ""} link{extractedLinks.length === 1 ? "" : "s"}
+              Fetch {extractedLinks.length || ""} {pluralize(extractedLinks.length, "link")}
             </button>
-            <span className="muted">Detected {extractedLinks.length} link{extractedLinks.length === 1 ? "" : "s"}.</span>
+            <span className="muted">Detected {extractedLinks.length} {pluralize(extractedLinks.length, "link")}.</span>
           </div>
           {(progress || errors.length > 0) && (
             <div className="mt-[0.45rem] grid gap-1">
@@ -397,10 +396,3 @@ function getPullResult(log: SessionLog): string {
   return log.success ? "Success" : "Fail";
 }
 
-function formatRunSessionType(sessionType: RunSessionType): string {
-  return sessionType === "full-clear" ? "full clear" : "practice";
-}
-
-function formatWing(wing: number | null): string {
-  return wing == null ? "Unmapped" : `Wing ${wing}`;
-}

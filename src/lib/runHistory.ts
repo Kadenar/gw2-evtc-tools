@@ -1,4 +1,5 @@
 import { ENCOUNTER_PHASE_DATA_VERSION, type EncounterPhaseData, type SessionLog } from "./dpsReport";
+import { average } from "./format";
 
 export type ImportMode = "merge" | "replace";
 export type RunSessionType = "full-clear" | "practice";
@@ -422,11 +423,6 @@ export function getIsoWeekKey(unixSeconds: number): string {
 function getEncounterKey(bossId: number | null, bossName: string, isCm: boolean): string {
   const base = bossId == null ? bossName.toLowerCase().replace(/[^a-z0-9]+/g, "-") : String(bossId);
   return `${base || "unknown"}${isCm ? "-cm" : ""}`;
-}
-
-function average(values: number[]): number | null {
-  if (!values.length) return null;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function toFiniteNumber(value: unknown): number | null {

@@ -4,7 +4,7 @@ export type ResultFilter = "all" | "kill" | "wipe" | "unknown";
 export type CmFilter = "all" | "cm" | "normal";
 export type SessionTypeFilter = "all" | RunSessionType;
 export type SortMode = "newest" | "oldest" | "duration" | "dps" | "encounter";
-export type HistoryView = "dashboard" | "runs" | "manage" | "weeks" | "wings" | "encounters" | "downtime";
+export type HistoryView = "dashboard" | "runs" | "manage" | "weeks" | "wings" | "encounters" | "downtime" | "players";
 
 export type HistoryFilters = {
   query: string;
@@ -47,6 +47,13 @@ export type EncounterSummary = RunStats & {
   wing: number | null;
   isCm: boolean;
   runsList: RunRecord[];
+};
+
+export type EncounterPhaseStatus = {
+  fetchableRuns: number;
+  cachedRuns: number;
+  loadingRuns: number;
+  failedRuns: number;
 };
 
 export type RaidNightSummary = {

@@ -1,5 +1,5 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { downloadBlob } from "../lib/format";
+import { downloadBlob, pluralize } from "../lib/format";
 import { fetchBundledRunHistoryBackup, getBundledRunHistorySources, getSingleBundledRunHistorySource } from "../lib/bundledRunHistory";
 import { fetchEncounterPhaseData } from "../lib/dpsReport";
 import { compactFieldClass, cx, fieldClass, inlineActionsClass, panelClass, runHistoryShellClass } from "../lib/ui";
@@ -20,6 +20,7 @@ import { DashboardTab } from "./run-history/DashboardTab";
 import { DowntimeTab } from "./run-history/DowntimeTab";
 import { EncountersTab } from "./run-history/EncountersTab";
 import { ManageRunsTab } from "./run-history/ManageRunsTab";
+import { PlayersTab } from "./run-history/PlayersTab";
 import { RunsTab } from "./run-history/RunsTab";
 import { WeeksTab } from "./run-history/WeeksTab";
 import { WingsTab } from "./run-history/WingsTab";
@@ -40,6 +41,7 @@ const HISTORY_VIEWS: Array<{ id: HistoryView; label: string; group: "Primary" | 
   { id: "wings", label: "Wings", group: "Analysis" },
   { id: "encounters", label: "Encounters", group: "Analysis" },
   { id: "downtime", label: "Downtime", group: "Analysis" },
+  { id: "players", label: "Players", group: "Analysis" },
 ];
 
 const HISTORY_SCOPE_OPTIONS = [
@@ -172,7 +174,7 @@ export function RunHistory() {
       const json = JSON.stringify(backup, null, 2);
       downloadBlob(new Blob([json], { type: "application/json" }), `gw2-run-history-${backup.exportedAt.slice(0, 10)}.json`);
       setStatusTone("info");
-      setStatus(`Exported ${backup.runs.length} run${backup.runs.length === 1 ? "" : "s"}.`);
+      setStatus(`Exported ${backup.runs.length} ${pluralize(backup.runs.length, "run")}.`);
     } catch (err) {
       setStatusTone("error");
       setStatus(err instanceof Error ? err.message : "Could not export backup.");
@@ -221,8 +223,8 @@ export function RunHistory() {
     setStatusTone("info");
     setStatus(
       mode === "replace"
-        ? `Restored ${result.saved} run${result.saved === 1 ? "" : "s"}.`
-        : `Imported ${result.saved} new and updated ${result.updated} existing run${result.updated === 1 ? "" : "s"}.`,
+        ? `Restored ${result.saved} ${pluralize(result.saved, "run")}.`
+        : `Imported ${result.saved} new and updated ${result.updated} existing ${pluralize(result.updated, "run")}.`,
     );
   }
 
@@ -273,8 +275,8 @@ export function RunHistory() {
   }
 
   async function deleteSelectedRuns() {
-    if (!selectedRunIds.length || !window.confirm(`Delete ${selectedRunIds.length} selected run${selectedRunIds.length === 1 ? "" : "s"}?`)) return;
-    await deleteRuns(selectedRunIds, `Deleted ${selectedRunIds.length} selected run${selectedRunIds.length === 1 ? "" : "s"}.`);
+    if (!selectedRunIds.length || !window.confirm(`Delete ${selectedRunIds.length} selected ${pluralize(selectedRunIds.length, "run")}?`)) return;
+    await deleteRuns(selectedRunIds, `Deleted ${selectedRunIds.length} selected ${pluralize(selectedRunIds.length, "run")}.`);
   }
 
   async function deleteRuns(ids: string[], successMessage: string) {
@@ -381,9 +383,6 @@ export function RunHistory() {
               setSelectedEncounterKey(encounterKey);
               setView("encounters");
             }}
-            onEnsureRunPhaseData={(runsToEnsure) => {
-              void ensureRunPhaseData(runsToEnsure);
-            }}
           />
         );
       case "wings":
@@ -410,6 +409,19 @@ export function RunHistory() {
             weekOptions={weekOptions}
             wingOptions={wingOptions}
             night={selectedNight}
+          />
+        );
+      case "players":
+        return (
+          <PlayersTab
+            filters={filters}
+            filterActions={filterActions}
+            weekOptions={weekOptions}
+            wingOptions={wingOptions}
+            runs={runs}
+            onEnsureRunPhaseData={(runsToEnsure) => {
+              void ensureRunPhaseData(runsToEnsure);
+            }}
           />
         );
     }

@@ -2,7 +2,7 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 import { formatSeconds } from "../../lib/format";
 import { cx, panelClass, sectionHeadingClass, statGridClass, tableWrapClass } from "../../lib/ui";
 import type { WingHistorySummary } from "./types";
-import { buildWingSessionSummaries, formatCalendarDate } from "./utils";
+import { buildWingSessionSummaries, formatCalendarDate, formatDurationTick, formatShortDate, pluralize } from "./utils";
 import { StatCard } from "./shared";
 
 const WING_LINE_COLORS = [
@@ -80,31 +80,30 @@ export function WingsTab({ wingSummaries }: { wingSummaries: WingHistorySummary[
         <div className={cx(panelClass, "p-0")}>
           <div className="grid gap-[0.85rem] p-4">
             <div className={sectionHeadingClass}>
-              <div>
-                <h3 className="m-0 text-[1.25rem]">Wing trend lines</h3>
-                <p className="muted">Comparable wing clears only. Each line is that wing's own clear time over time.</p>
-              </div>
+              <h3 className="m-0 text-[1.25rem]">Wing trends</h3>
             </div>
             {chartRows.length ? (
-              <div className="h-[20rem] min-w-0">
+              <div className="h-80 min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartRows} margin={{ top: 12, right: 18, bottom: 8, left: 8 }}>
                     <CartesianGrid vertical={false} stroke="color-mix(in oklab, var(--color-base-content) 14%, transparent)" strokeDasharray="4 4" />
                     <XAxis
-                      type="number"
+                      type="category"
                       dataKey="start"
-                      scale="time"
-                      domain={["dataMin", "dataMax"]}
+                      scale="point"
+                      padding={{ left: 12, right: 12 }}
+                      interval="preserveStartEnd"
                       tickMargin={10}
-                      tickFormatter={formatWingTrendTick}
+                      tickFormatter={(ms) => formatShortDate(new Date(ms))}
                       tick={{ fill: "var(--color-base-content)", fontSize: 12, fontWeight: 600 }}
                       axisLine={false}
                       tickLine={false}
                     />
                     <YAxis
                       width={62}
+                      domain={wingTrendDomain}
                       tickMargin={8}
-                      tickFormatter={formatWingTrendDuration}
+                      tickFormatter={formatDurationTick}
                       tick={{ fill: "var(--color-base-content)", fontSize: 12, fontWeight: 600 }}
                       axisLine={false}
                       tickLine={false}
@@ -194,7 +193,7 @@ function WingTrendTooltip({
   if (!active || !payload?.length || label == null) return null;
 
   return (
-    <div className="grid min-w-[11.25rem] gap-[0.35rem] rounded-xl border border-line bg-panel px-3 py-2 shadow-lg">
+    <div className="grid min-w-45 gap-[0.35rem] rounded-xl border border-line bg-panel px-3 py-2 shadow-lg">
       <strong>{formatCalendarDate(Math.round(label / 1000))}</strong>
       <div className="grid gap-[0.2rem] text-[0.88rem]">
         {payload
@@ -215,15 +214,20 @@ function WingTrendTooltip({
 
 function formatCoverageDetail(included: number, missing: number, missingLabel: string): string {
   if (included + missing === 0) return "No wing data";
-  if (missing > 0) return `${included} wing${included === 1 ? "" : "s"} included, ${missing} ${missingLabel}`;
-  return `${included} wing${included === 1 ? "" : "s"} included`;
+  if (missing > 0) return `${included} ${pluralize(included, "wing")} included, ${missing} ${missingLabel}`;
+  return `${included} ${pluralize(included, "wing")} included`;
 }
 
-function formatWingTrendTick(timestampMs: number): string {
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(timestampMs));
-}
+const wingTrendDomain: [(min: number) => number, (max: number) => number] = [
+  (min) => {
+    if (!Number.isFinite(min)) return 0;
+    const pad = Math.max((min || 0) * 0.05, 30);
+    return Math.max(0, Math.floor((min - pad) / 60) * 60);
+  },
+  (max) => {
+    if (!Number.isFinite(max)) return 0;
+    const pad = Math.max(max * 0.05, 30);
+    return Math.ceil((max + pad) / 60) * 60;
+  },
+];
 
-function formatWingTrendDuration(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
-  return formatSeconds(seconds);
-}

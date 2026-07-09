@@ -1,5 +1,5 @@
 import { EmptyCard } from "./ui/empty-card";
-import { formatDateTime, formatSeconds } from "../lib/format";
+import { formatDateTime, formatSeconds, formatWing, getResultClass } from "../lib/format";
 
 export type SessionTimelineLog = {
   permalink: string;
@@ -97,15 +97,15 @@ export function SessionTimelineView({
         <span>{lastPull ? formatDateTime(lastPull.log.end) : "N/A"}</span>
       </div>
       <div className="overflow-x-auto rounded-2xl border border-line bg-base-100" aria-label="Session timeline">
-        <div className="grid min-w-[760px] gap-[0.55rem] p-3">
+        <div className="grid min-w-190 gap-[0.55rem] p-3">
           {rows.map((row) => (
-            <div className="grid gap-[0.25rem]" key={row.key}>
+            <div className="grid gap-1" key={row.key}>
               <div className="flex items-center text-[0.78rem] font-black uppercase text-accent-2 tracking-[0.08em]">
                 <span>{row.label}</span>
               </div>
-              <div className="flex min-h-[3.7rem] items-stretch gap-[0.25rem]">{row.items.map((item) => renderTimelineItem(item))}</div>
+              <div className="flex min-h-[3.7rem] items-stretch gap-1">{row.items.map((item) => renderTimelineItem(item))}</div>
               {row.transitionAfter ? (
-                <div className="mx-auto mt-[0.1rem] flex w-max max-w-full items-center justify-center gap-2 rounded-full border border-dashed border-primary/55 bg-primary/8 px-3 py-[0.25rem] text-[0.82rem] text-accent-2">
+                <div className="mx-auto mt-[0.1rem] flex w-max max-w-full items-center justify-center gap-2 rounded-full border border-dashed border-primary/55 bg-primary/8 px-3 py-1 text-[0.82rem] text-accent-2">
                   <span>
                     {formatWing(row.transitionAfter.fromWing)} -&gt; {formatWing(row.transitionAfter.toWing)}
                   </span>
@@ -138,7 +138,7 @@ function renderTimelineItem(item: SessionTimelineItem) {
   if (item.type === "pull") {
     return (
       <a
-        className={`timeline-segment timeline-pull ${getPullClass(item.log)}`}
+        className={`timeline-segment timeline-pull ${getResultClass(item.log.success)}`}
         href={item.log.permalink}
         target="_blank"
         rel="noreferrer"
@@ -209,11 +209,3 @@ function getPullResult(log: SessionTimelineLog): string {
   return log.success ? "Success" : "Fail";
 }
 
-function getPullClass(log: SessionTimelineLog): string {
-  if (log.success == null) return "unknown";
-  return log.success ? "kill" : "wipe";
-}
-
-function formatWing(wing: number | null): string {
-  return wing == null ? "Unmapped" : `Wing ${wing}`;
-}
