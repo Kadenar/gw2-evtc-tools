@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { getEncounterSortOrder } from "../../data/encounters";
 import { formatSeconds } from "../../lib/format";
 import { compactFieldClass, cx, fieldClass, overviewGridClass, panelClass, sectionHeadingClass, statGridClass, summaryCardClass, tableWrapClass } from "../../lib/ui";
+import { EmptyCard } from "../ui/empty-card";
+import { AppSelect } from "../ui/app-select";
 import { hasCurrentPhaseData, type RunRecord, type WeekSummary } from "../../lib/runHistory";
 import type { EncounterSummary, HistoryFilterActions, HistoryFilters, RaidNightSummary } from "./types";
 import {
@@ -29,6 +31,8 @@ type AggregatedPlayer = {
   averageTargetDps: number | null;
   encounterEntries: Array<{ encounter: string; dps: number | null }>;
 };
+
+const NO_COMPARISON_OPTION = { value: "none", label: "No comparison" } as const;
 
 export function WeeksTab({
   filters,
@@ -79,6 +83,8 @@ export function WeeksTab({
     () => buildPlayerComparisonRows(selectedWingDetail?.runList ?? [], compareWingDetail?.runList ?? []),
     [compareWingDetail?.runList, selectedWingDetail?.runList],
   );
+  const selectedWeekOptions = useMemo(() => weeks.map((week) => ({ value: week.weekKey, label: week.weekKey })), [weeks]);
+  const compareWeekOptions = useMemo(() => [NO_COMPARISON_OPTION, ...weeks.map((week) => ({ value: week.weekKey, label: week.weekKey }))], [weeks]);
 
   useEffect(() => {
     if (!weeks.length) {
@@ -145,13 +151,7 @@ export function WeeksTab({
         <div className="grid items-end gap-[0.9rem] [grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)] max-nav:grid-cols-1">
           <label className={cx(fieldClass, compactFieldClass, "m-0 max-w-none")}>
             <span className="text-muted">Selected week</span>
-            <select value={selectedWeekKey} onChange={(event) => setSelectedWeekKey(event.target.value)}>
-              {weeks.map((week) => (
-                <option value={week.weekKey} key={week.weekKey}>
-                  {week.weekKey}
-                </option>
-              ))}
-            </select>
+            <AppSelect value={selectedWeekKey} onValueChange={setSelectedWeekKey} options={selectedWeekOptions} />
           </label>
           <button
             type="button"
@@ -168,14 +168,7 @@ export function WeeksTab({
           </button>
           <label className={cx(fieldClass, compactFieldClass, "m-0 max-w-none")}>
             <span className="text-muted">Compare against</span>
-            <select value={compareWeekKey} onChange={(event) => setCompareWeekKey(event.target.value)}>
-              <option value="none">No comparison</option>
-              {weeks.map((week) => (
-                <option value={week.weekKey} key={week.weekKey}>
-                  {week.weekKey}
-                </option>
-              ))}
-            </select>
+            <AppSelect value={compareWeekKey} onValueChange={setCompareWeekKey} options={compareWeekOptions} />
           </label>
         </div>
       </div>
@@ -211,7 +204,7 @@ export function WeeksTab({
             />
           </div>
         ) : (
-          <p className="muted">No weeks match the current filters.</p>
+          <EmptyCard title="No weeks match" description="The current filters remove every saved week. Change the filters or load more run history." />
         )}
       </div>
 
@@ -250,7 +243,7 @@ export function WeeksTab({
             </table>
           </div>
         ) : (
-          <p className="muted">No week is currently selected.</p>
+          <EmptyCard title="No week selected" description="Pick a saved week to compare wing performance." />
         )}
       </div>
 
@@ -316,7 +309,7 @@ export function WeeksTab({
             ) : null}
           </>
         ) : (
-          <p className="muted">No wing detail is available for the current comparison.</p>
+          <EmptyCard title="No wing detail available" description="Select a wing with saved data to compare encounters, downtime, and player performance." />
         )}
       </div>
 
@@ -409,7 +402,7 @@ function WingEncounterPanel({
   onSelectEncounter: (encounterKey: string) => void;
 }) {
   if (!rows.length) {
-    return <p className="muted">No encounters were logged for this wing.</p>;
+    return <EmptyCard title="No encounters logged" description="This wing has no saved encounters for the selected comparison." />;
   }
 
   return (
@@ -466,7 +459,7 @@ function WingDowntimePanel({
   }>;
 }) {
   if (!rows.length) {
-    return <p className="muted">No downtime data is available for this wing.</p>;
+    return <EmptyCard title="No downtime data" description="This wing does not have enough saved raid-night data to compare downtime." />;
   }
 
   return (
@@ -526,10 +519,15 @@ function WingPlayersPanel({
 
   if (!rows.length) {
     return (
-      <p className="muted">
-        No cached player DPS is available yet. Loaded {selectedCached}/{selectedRuns.length} run{selectedRuns.length === 1 ? "" : "s"}
-        {compareWeek ? ` for ${selectedWeek?.weekKey ?? "selected"} and ${compareCached}/${compareRuns.length} for ${compareWeek.weekKey}` : ""}.
-      </p>
+      <EmptyCard
+        title="No cached player DPS yet"
+        description={
+          <>
+            Loaded {selectedCached}/{selectedRuns.length} run{selectedRuns.length === 1 ? "" : "s"}
+            {compareWeek ? ` for ${selectedWeek?.weekKey ?? "selected"} and ${compareCached}/${compareRuns.length} for ${compareWeek.weekKey}` : ""}.
+          </>
+        }
+      />
     );
   }
 

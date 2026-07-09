@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { getEncounterName } from "../data/encounters";
 import { downloadBlob, makeSafeFilename } from "../lib/format";
 import { compactFieldClass, cx, fieldClass, panelClass, toolSplitClass } from "../lib/ui";
+import { EmptyCard } from "./ui/empty-card";
+import { FileDropzone } from "./ui/file-dropzone";
 import { ExtractedEvtc, EvtcHeaderInfo, parseEvtcHeader, readEvtcFile, repackEvtc, rewriteEvtcBossId } from "../lib/evtc";
 
 type LoadedLog = {
@@ -89,15 +91,14 @@ export function TriggerRewriter() {
           Supports only <strong>Gorseval -&gt; Sabetha</strong> and <strong>Twisted Castle -&gt; Xera</strong>.
         </p>
 
-        <label className="dropzone">
-          <input
-            type="file"
-            accept=".evtc,.zevtc,.zip,application/zip,application/octet-stream"
-            onChange={(event) => void handleFile(event.target.files?.[0] ?? null)}
-          />
-          <span>Choose EVTC/ZEVTC file</span>
-          <small className="text-muted">Supports raw EVTC and zipped ZEVTC-style archives.</small>
-        </label>
+        <FileDropzone
+          title="Choose EVTC/ZEVTC file"
+          description="Supports raw EVTC and zipped ZEVTC-style archives."
+          hint="Click anywhere in the dropzone or drop a file directly into it."
+          accept=".evtc,.zevtc,.zip,application/zip,application/octet-stream"
+          files={loaded ? [loaded.file] : []}
+          onFilesChange={(files) => void handleFile(files[0] ?? null)}
+        />
 
         {error && <div role="alert" className="alert alert-error mt-3">{error}</div>}
         {message && <div role="alert" className="alert alert-success mt-3">{message}</div>}
@@ -106,7 +107,7 @@ export function TriggerRewriter() {
       <div className={panelClass}>
         <h3 className="mb-3 mt-0 text-[1.25rem]">Rewrite settings</h3>
         {!loaded ? (
-          <p className="text-muted">Upload a file to inspect its header.</p>
+          <EmptyCard title="No log loaded" description="Upload an EVTC or ZEVTC file to inspect its header and unlock rewrite settings." />
         ) : (
           <>
             <div className="my-4 grid grid-cols-2 gap-3 max-nav:grid-cols-1">

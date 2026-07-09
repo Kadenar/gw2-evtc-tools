@@ -1,5 +1,5 @@
 import { formatSeconds } from "../../lib/format";
-import { panelClass, sectionHeadingClass, statGridClass, tableWrapClass } from "../../lib/ui";
+import { cx, panelClass, sectionHeadingClass, statGridClass, tableWrapClass } from "../../lib/ui";
 import type { WingHistorySummary } from "./types";
 import { formatCalendarDate } from "./utils";
 import { StatCard } from "./shared";
@@ -8,28 +8,42 @@ export function WingsTab({ wingSummaries }: { wingSummaries: WingHistorySummary[
   const bestTimes = wingSummaries
     .map((wing) => wing.bestTime)
     .filter((bestTime): bestTime is number => bestTime != null && bestTime > 0);
+  const latestTimes = wingSummaries
+    .map((wing) => wing.latestTime)
+    .filter((latestTime): latestTime is number => latestTime != null && latestTime > 0);
+  const averageTimes = wingSummaries
+    .map((wing) => wing.averageTime)
+    .filter((averageTime): averageTime is number => averageTime != null && averageTime > 0);
   const summedBestTime = bestTimes.length ? bestTimes.reduce((sum, bestTime) => sum + bestTime, 0) : null;
+  const summedLatestTime = latestTimes.length ? latestTimes.reduce((sum, latestTime) => sum + latestTime, 0) : null;
+  const summedAverageTime = averageTimes.length ? averageTimes.reduce((sum, averageTime) => sum + averageTime, 0) : null;
   const missingBestTimes = wingSummaries.length - bestTimes.length;
+  const missingLatestTimes = wingSummaries.length - latestTimes.length;
+  const missingAverageTimes = wingSummaries.length - averageTimes.length;
 
   return (
     <>
-      <div className={panelClass}>
+      <div className={cx(panelClass, "grid gap-[0.85rem]")}>
         <div className={sectionHeadingClass}>
           <div>
-            <h3 className="mb-3 mt-0 text-[1.25rem]">Wing breakdown</h3>
+            <h3 className="m-0 text-[1.25rem]">Wing breakdown</h3>
           </div>
         </div>
         <div className={statGridClass}>
           <StatCard
             label="Sum of best"
             value={summedBestTime == null ? "N/A" : formatSeconds(summedBestTime)}
-            detail={
-              !wingSummaries.length
-                ? "No wing data"
-                : missingBestTimes > 0
-                  ? `${bestTimes.length} wing${bestTimes.length === 1 ? "" : "s"} included, ${missingBestTimes} missing full-clear PB`
-                  : ""
-            }
+            detail={formatCoverageDetail(bestTimes.length, missingBestTimes, "missing full-clear PB")}
+          />
+          <StatCard
+            label="Sum of latest"
+            value={summedLatestTime == null ? "N/A" : formatSeconds(summedLatestTime)}
+            detail={formatCoverageDetail(latestTimes.length, missingLatestTimes, "missing comparable clear")}
+          />
+          <StatCard
+            label="Sum of average"
+            value={summedAverageTime == null ? "N/A" : formatSeconds(summedAverageTime)}
+            detail={formatCoverageDetail(averageTimes.length, missingAverageTimes, "missing comparable average")}
           />
         </div>
         <div className={tableWrapClass}>
@@ -37,8 +51,8 @@ export function WingsTab({ wingSummaries }: { wingSummaries: WingHistorySummary[
             <thead>
               <tr>
                 <th>Wing</th>
-                <th>Best full clear</th>
-                <th>Latest full clear</th>
+                <th>Best clear</th>
+                <th>Latest clear</th>
                 <th>Average</th>
                 <th>Comparable</th>
                 <th>Partial excluded</th>
@@ -72,4 +86,10 @@ export function WingsTab({ wingSummaries }: { wingSummaries: WingHistorySummary[
       </div>
     </>
   );
+}
+
+function formatCoverageDetail(included: number, missing: number, missingLabel: string): string {
+  if (included + missing === 0) return "No wing data";
+  if (missing > 0) return `${included} wing${included === 1 ? "" : "s"} included, ${missing} ${missingLabel}`;
+  return `${included} wing${included === 1 ? "" : "s"} included`;
 }
