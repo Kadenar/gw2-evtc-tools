@@ -4,7 +4,7 @@ import type { RunRecord, RunSessionType, WeekSummary } from "../../lib/runHistor
 import { summarizeRunsByWeek } from "../../lib/runHistory";
 import type { CmFilter, EncounterSummary, ResultFilter, RunStats, SessionTypeFilter, SortMode, RaidNightSummary, WingHistorySummary } from "./types";
 
-type WingSessionSummary = {
+export type WingSessionSummary = {
   key: string;
   wing: number;
   weekKey: string;
@@ -186,7 +186,7 @@ function summarizeWeekByWing(runs: RunRecord[]): Map<number, WingWeekTimingSumma
   );
 }
 
-function buildWingSessionSummaries(runs: RunRecord[]): WingSessionSummary[] {
+export function buildWingSessionSummaries(runs: RunRecord[]): WingSessionSummary[] {
   const bySession = new Map<string, RunRecord[]>();
 
   for (const run of runs) {

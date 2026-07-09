@@ -1,3 +1,4 @@
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { formatSeconds } from "../../lib/format";
 import { inlineActionsClass, overviewGridClass, panelClass, sectionHeadingClass, statGridClass } from "../../lib/ui";
 import type { RaidNightSummary, SessionTypeFilter, WingHistorySummary } from "./types";
@@ -29,10 +30,7 @@ export function DashboardTab({
     <>
       <div className={panelClass}>
         <div className={sectionHeadingClass}>
-          <div>
-            <h3 className="mb-3 mt-0 text-[1.25rem]">Dashboard</h3>
-            <p className="muted">Latest {formatSessionScopeLabel(sessionTypeFilter).toLowerCase()} performance summary.</p>
-          </div>
+          <h3 className="mb-3 mt-0 text-[1.25rem]">Dashboard</h3>
           <div className={inlineActionsClass}>
             <button type="button" className="btn btn-sm" onClick={onViewHistory}>
               View history
@@ -147,57 +145,143 @@ function MetricRow({ label, value, detail }: { label: string; value: string; det
 }
 
 function TrendChart({ title, nights }: { title: string; nights: RaidNightSummary[] }) {
-  const chartNights = [...nights].reverse();
-  const times = chartNights.map((night) => night.totalTime);
-  const min = times.length ? Math.min(...times) : 0;
-  const max = times.length ? Math.max(...times) : 0;
-  const range = Math.max(1, max - min);
-  const width = 560;
-  const height = 180;
-  const padX = 46;
-  const padTop = 18;
-  const padBottom = 34;
-  const plotWidth = width - padX - 18;
-  const plotHeight = height - padTop - padBottom;
-  const points = chartNights.map((night, index) => {
-    const x = padX + (chartNights.length <= 1 ? plotWidth / 2 : (index / (chartNights.length - 1)) * plotWidth);
-    const y = padTop + ((max - night.totalTime) / range) * plotHeight;
-    return { night, x, y };
-  });
-  const line = points.map((point) => `${point.x},${point.y}`).join(" ");
+  const chartRows = [...nights].reverse().map((night) => ({
+    key: night.key,
+    label: night.shortLabel,
+    fullLabel: night.label,
+    scope: `${formatWingSet(night.wings)} ${formatRunSessionType(night.sessionType)}`,
+    totalTime: night.totalTime,
+    combatTime: night.combatTime,
+    downtime: night.downtime,
+    wipes: night.wipes,
+  }));
 
   return (
     <div className={panelClass}>
       <div className={sectionHeadingClass}>
         <div>
           <h3 className="mb-3 mt-0 text-[1.25rem]">{title}</h3>
+          <p className="muted">Stacked combat and downtime over the latest {nights.length} saved raid night{nights.length === 1 ? "" : "s"}.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-[0.82rem] text-muted">
+          <span className="inline-flex items-center gap-2">
+            <span className="legend-dot kill" />
+            Combat
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <span className="legend-dot downtime" />
+            Downtime
+          </span>
         </div>
       </div>
-      {points.length ? (
-        <div className="overflow-x-auto">
-          <svg className="block w-full min-w-130" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
-            <line className="trend-axis" x1={padX} y1={padTop} x2={padX} y2={height - padBottom} />
-            <line className="trend-axis" x1={padX} y1={height - padBottom} x2={width - 18} y2={height - padBottom} />
-            <text className="trend-label" x="4" y={padTop + 4}>
-              {formatChartTime(max)}
-            </text>
-            <text className="trend-label" x="4" y={height - padBottom + 4}>
-              {formatChartTime(min)}
-            </text>
-            {points.length > 1 ? <polyline className="trend-line" points={line} /> : null}
-            {points.map((point) => (
-              <g key={point.night.key}>
-                <circle className="trend-point" cx={point.x} cy={point.y} r="4.5" />
-                <text className="trend-date" x={point.x} y={height - 10} textAnchor="middle">
-                  {point.night.shortLabel}
-                </text>
-              </g>
-            ))}
-          </svg>
+      {chartRows.length ? (
+        <div className="h-[17rem] min-w-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartRows} margin={{ top: 12, right: 10, bottom: 6, left: 0 }}>
+              <defs>
+                <linearGradient id="combat-area" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-success)" stopOpacity={0.42} />
+                  <stop offset="95%" stopColor="var(--color-success)" stopOpacity={0.08} />
+                </linearGradient>
+                <linearGradient id="downtime-area" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-info)" stopOpacity={0.32} />
+                  <stop offset="95%" stopColor="var(--color-info)" stopOpacity={0.06} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} stroke="color-mix(in oklab, var(--color-base-content) 14%, transparent)" strokeDasharray="4 4" />
+              <XAxis
+                dataKey="label"
+                tickMargin={10}
+                tick={{ fill: "var(--color-base-content)", fontSize: 12, fontWeight: 600 }}
+                axisLine={{ stroke: "color-mix(in oklab, var(--color-base-content) 22%, transparent)" }}
+                tickLine={{ stroke: "color-mix(in oklab, var(--color-base-content) 22%, transparent)" }}
+              />
+              <YAxis
+                width={54}
+                tickMargin={8}
+                tickFormatter={formatChartTime}
+                tick={{ fill: "var(--color-base-content)", fontSize: 12, fontWeight: 600 }}
+                axisLine={{ stroke: "color-mix(in oklab, var(--color-base-content) 22%, transparent)" }}
+                tickLine={{ stroke: "color-mix(in oklab, var(--color-base-content) 22%, transparent)" }}
+              />
+              <Tooltip
+                cursor={{ stroke: "color-mix(in oklab, var(--color-base-content) 20%, transparent)", strokeDasharray: "4 4" }}
+                content={<TrendTooltip />}
+              />
+              <Area
+                type="linear"
+                dataKey="combatTime"
+                name="Combat"
+                stackId="time"
+                stroke="var(--color-success)"
+                fill="url(#combat-area)"
+                strokeWidth={2}
+                dot={{ r: 3, fill: "var(--color-success)", stroke: "var(--color-base-100)", strokeWidth: 1.5 }}
+                activeDot={{ r: 4, stroke: "var(--color-base-100)", strokeWidth: 2 }}
+              />
+              <Area
+                type="linear"
+                dataKey="downtime"
+                name="Downtime"
+                stackId="time"
+                stroke="var(--color-info)"
+                fill="url(#downtime-area)"
+                strokeWidth={2}
+                dot={{ r: 3, fill: "var(--color-info)", stroke: "var(--color-base-100)", strokeWidth: 1.5 }}
+                activeDot={{ r: 4, stroke: "var(--color-base-100)", strokeWidth: 2 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       ) : (
         <p className="muted">Save more runs to generate a trend.</p>
       )}
+    </div>
+  );
+}
+
+function TrendTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{
+    color?: string;
+    dataKey?: string | number;
+    name?: string;
+    value?: number;
+    payload?: {
+      fullLabel: string;
+      scope: string;
+      totalTime: number;
+      wipes: number;
+    };
+  }>;
+}) {
+  const row = payload?.[0]?.payload;
+  if (!active || !payload?.length || !row) return null;
+
+  return (
+    <div className="grid min-w-[11.25rem] gap-[0.4rem] rounded-xl border border-line bg-panel px-3 py-2 shadow-lg">
+      <div className="grid gap-[0.1rem]">
+        <strong>{row.fullLabel}</strong>
+        <span className="text-[0.82rem] text-muted">{row.scope}</span>
+      </div>
+      <div className="grid gap-[0.25rem] text-[0.88rem]">
+        {payload.map((entry) => (
+          <div className="flex items-center justify-between gap-3" key={String(entry.dataKey)}>
+            <span className="inline-flex items-center gap-2 text-muted">
+              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: entry.color }} />
+              {entry.name}
+            </span>
+            <strong>{formatSeconds(entry.value ?? 0)}</strong>
+          </div>
+        ))}
+      </div>
+      <div className="grid gap-[0.1rem] border-t border-line pt-2 text-[0.82rem] text-muted">
+        <span>Total {formatSeconds(row.totalTime)}</span>
+        <span>Wipes {row.wipes}</span>
+      </div>
     </div>
   );
 }
