@@ -114,10 +114,20 @@ export function buildWingHistorySummaries(runs: RunRecord[]): WingHistorySummary
     .sort((a, b) => a.wing - b.wing);
 }
 
+type WingTimingSplit = { current: number | null; previous: number | null };
+
 export function buildWeekWingRows(
   currentRuns: RunRecord[],
   previousRuns: RunRecord[],
-): Array<{ wing: number; current: number | null; previous: number | null; change: string; note: string }> {
+): Array<{
+  wing: number;
+  current: number | null;
+  previous: number | null;
+  change: string;
+  combat: WingTimingSplit;
+  downtime: WingTimingSplit;
+  coverageNote: string | null;
+}> {
   const currentByWing = summarizeWeekByWing(currentRuns);
   const previousByWing = summarizeWeekByWing(previousRuns);
   const wings = Array.from(new Set([...currentByWing.keys(), ...previousByWing.keys()])).sort((a, b) => a - b);
@@ -125,6 +135,8 @@ export function buildWeekWingRows(
   return wings.map((wing) => {
     const currentTiming = currentByWing.get(wing) ?? null;
     const previousTiming = previousByWing.get(wing) ?? null;
+    const combat: WingTimingSplit = { current: currentTiming?.combatTime ?? null, previous: previousTiming?.combatTime ?? null };
+    const downtime: WingTimingSplit = { current: currentTiming?.downtime ?? null, previous: previousTiming?.downtime ?? null };
 
     if (!currentTiming || !previousTiming) {
       return {
@@ -132,7 +144,9 @@ export function buildWeekWingRows(
         current: currentTiming?.totalTime ?? null,
         previous: previousTiming?.totalTime ?? null,
         change: "Needs both weeks",
-        note: currentTiming ? `Only this week: ${currentTiming.coverageLabel}` : previousTiming ? `Only last week: ${previousTiming.coverageLabel}` : "Needs both weeks",
+        combat,
+        downtime,
+        coverageNote: currentTiming ? `Only this week: ${currentTiming.coverageLabel}` : previousTiming ? `Only last week: ${previousTiming.coverageLabel}` : "Needs both weeks",
       };
     }
 
@@ -142,7 +156,9 @@ export function buildWeekWingRows(
         current: currentTiming.totalTime,
         previous: previousTiming.totalTime,
         change: "Coverage mismatch",
-        note: `Coverage changed: this week ${currentTiming.coverageLabel}, last week ${previousTiming.coverageLabel}`,
+        combat,
+        downtime,
+        coverageNote: `Coverage changed: this week ${currentTiming.coverageLabel}, last week ${previousTiming.coverageLabel}`,
       };
     }
 
@@ -151,7 +167,9 @@ export function buildWeekWingRows(
       current: currentTiming.totalTime,
       previous: previousTiming.totalTime,
       change: formatTimeDelta(currentTiming.totalTime, previousTiming.totalTime),
-      note: describeWingTimingDelta(wing, currentTiming, previousTiming),
+      combat,
+      downtime,
+      coverageNote: currentTiming.isComparable ? null : `${currentTiming.coverageLabel}`,
     };
   });
 }
@@ -259,27 +277,6 @@ function formatCoverageLabel(wing: number, encounterCodes: string[]): string {
   return `${labels.length}/${Math.max(definitions.length, labels.length)} bosses: ${labels.join(", ")}`;
 }
 
-function describeWingTimingDelta(wing: number, current: WingWeekTimingSummary, previous: WingWeekTimingSummary): string {
-  const coveragePrefix = current.isComparable ? "" : `${current.coverageLabel}. `;
-  const combatDelta = current.combatTime - previous.combatTime;
-  const downtimeDelta = current.downtime - previous.downtime;
-  const parts: string[] = [];
-
-  if (Math.abs(combatDelta) >= 1) {
-    parts.push(combatDelta < 0 ? `combat ${formatSeconds(Math.abs(combatDelta))} faster` : `combat ${formatSeconds(Math.abs(combatDelta))} slower`);
-  }
-
-  if (Math.abs(downtimeDelta) >= 1) {
-    parts.push(downtimeDelta < 0 ? `${formatSeconds(Math.abs(downtimeDelta))} less downtime` : `${formatSeconds(Math.abs(downtimeDelta))} more downtime`);
-  }
-
-  if (!parts.length) {
-    return `${coveragePrefix}Stable`;
-  }
-
-  return `${coveragePrefix}${capitalize(parts[0])}${parts[1] ? ` and ${parts[1]}` : ""}`;
-}
-
 function buildWingDefinitions(): Map<number, WingDefinition[]> {
   const byWing = new Map<number, WingDefinition[]>();
 
@@ -328,10 +325,6 @@ function sortEncounterCodesForWing(wing: number, encounterCodes: string[]): stri
     const rightIndex = order.indexOf(right);
     return (leftIndex === -1 ? Number.POSITIVE_INFINITY : leftIndex) - (rightIndex === -1 ? Number.POSITIVE_INFINITY : rightIndex) || left.localeCompare(right);
   });
-}
-
-function capitalize(value: string): string {
-  return value ? `${value[0].toUpperCase()}${value.slice(1)}` : value;
 }
 
 export type TimelineRow =

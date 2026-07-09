@@ -1,9 +1,8 @@
 // Formatters for the Weeks tab. Pure string helpers — no React.
 
-import { formatSeconds, pluralize } from "../../../lib/format";
+import { pluralize } from "../../../lib/format";
 import type { RunRecord } from "../../../lib/runHistory";
 import { getRunStart } from "../utils";
-import { getComparableEncounterDuration } from "./weekAggregation";
 import type { EncounterSummary } from "../types";
 
 export type DetailTab = "overview" | "encounters" | "downtime";
@@ -15,11 +14,6 @@ const dayFormatter = new Intl.DateTimeFormat(undefined, { day: "numeric" });
 export function formatEncounterRecord(encounter: EncounterSummary | null): string {
   if (!encounter) return "N/A";
   return `${encounter.kills} ${pluralize(encounter.kills, "kill")} / ${encounter.wipes} ${pluralize(encounter.wipes, "wipe")}`;
-}
-
-export function formatEncounterBest(encounter: EncounterSummary | null): string {
-  const duration = getComparableEncounterDuration(encounter);
-  return duration == null ? "N/A" : formatSeconds(duration);
 }
 
 export function formatDetailTabLabel(tab: DetailTab): string {

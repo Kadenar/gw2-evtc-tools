@@ -1,9 +1,9 @@
+import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { formatSeconds } from "../../../lib/format";
 import { cx, panelClass, sectionHeadingClass, summaryCardClass } from "../../../lib/ui";
-import { Collapsible, CollapsibleContent } from "../../ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { EmptyCard } from "../../ui/empty-card";
-import { CollapsibleChevronTrigger } from "../shared";
 import type { EncounterSummary } from "../types";
 import { formatPercent, pluralize } from "../utils";
 import { buildEncounterGroups } from "./encounterGroups";
@@ -56,15 +56,20 @@ export function EncounterListPanel({
               onOpenChange={(open) => setOpenGroups((current) => ({ ...current, [group.key]: open }))}
             >
               <section className={cx(summaryCardClass, "gap-3 p-[0.9rem]")}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <h5 className="m-0 text-[0.98rem]">{group.label}</h5>
-                    <span className="badge badge-outline">
-                      {group.encounters.length} {pluralize(group.encounters.length, "encounter")}
-                    </span>
-                  </div>
-                  <CollapsibleChevronTrigger open={openGroups[group.key] ?? false} openLabel="Hide" closedLabel="Show" />
-                </div>
+                <CollapsibleTrigger asChild>
+                  <button type="button" className="flex w-full cursor-pointer items-center justify-between gap-3 text-left">
+                    <div className="flex items-center gap-3">
+                      <h5 className="m-0 text-[0.98rem]">{group.label}</h5>
+                      <span className="badge badge-outline">
+                        {group.encounters.length} {pluralize(group.encounters.length, "encounter")}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 px-2 text-[0.82rem] font-black uppercase tracking-[0.04em] text-muted">
+                      <span>{openGroups[group.key] ? "Hide" : "Show"}</span>
+                      <ChevronDown className={cx("size-4 transition-transform duration-200", (openGroups[group.key] ?? false) && "rotate-180")} />
+                    </div>
+                  </button>
+                </CollapsibleTrigger>
                 <CollapsibleContent className="grid gap-[0.55rem]">
                   {group.encounters.map((encounter) => (
                     <EncounterListRow

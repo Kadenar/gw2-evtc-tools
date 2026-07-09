@@ -69,7 +69,14 @@ export function WingDetailPanel({
           ) : null}
 
           {detailTab === "encounters" ? (
-            <WingEncounterPanel selectedWeek={selectedWeek} compareWeek={compareWeek} rows={encounterRows} onSelectEncounter={onSelectEncounter} />
+            <WingEncounterPanel
+              selectedWeek={selectedWeek}
+              compareWeek={compareWeek}
+              rows={encounterRows}
+              selectedDetail={selectedDetail}
+              compareDetail={compareDetail}
+              onSelectEncounter={onSelectEncounter}
+            />
           ) : null}
 
           {detailTab === "downtime" ? <WingDowntimePanel selectedWeek={selectedWeek} compareWeek={compareWeek} rows={downtimeRows} /> : null}

@@ -36,6 +36,11 @@ export function EncountersTab({
         wingOptions={wingOptions}
         title="Encounters"
       />
+      <EncounterListPanel
+        encounters={filteredEncounterSummaries}
+        selectedEncounterKey={selectedEncounter?.encounterKey ?? null}
+        onSelectEncounter={onSelectEncounter}
+      />
       {selectedEncounter ? (
         <EncounterDetail
           encounter={selectedEncounter}
@@ -45,14 +50,9 @@ export function EncountersTab({
         />
       ) : (
         <div className={panelClass}>
-          <EmptyCard title="No encounter selected" description="Choose an encounter from the list below to inspect pull history, timings, and cached phase data." />
+          <EmptyCard title="No encounter selected" description="Choose an encounter from the list above to inspect pull history, timings, and cached phase data." />
         </div>
       )}
-      <EncounterListPanel
-        encounters={filteredEncounterSummaries}
-        selectedEncounterKey={selectedEncounter?.encounterKey ?? null}
-        onSelectEncounter={onSelectEncounter}
-      />
     </>
   );
 }

@@ -120,7 +120,6 @@ export function WeeksTab({
       <div className={splitPanelClass}>
         <WingPerformanceTable
           selectedWeek={selectedWeek}
-          compareWeek={compareWeek}
           rows={wingRows}
           selectedWing={selectedWing}
           onSelectWing={setSelectedWing}
