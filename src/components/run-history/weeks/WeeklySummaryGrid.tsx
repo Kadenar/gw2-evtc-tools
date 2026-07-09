@@ -1,4 +1,5 @@
-// Grid of per-week summary cards below the comparison panels.
+// Grid of per-week summary cards below the comparison panels. Each card is a
+// picker: click sets the selected week, Ctrl-click sets the comparison week.
 
 import { formatSeconds } from "../../../lib/format";
 import { cx, panelClass, sectionHeadingClass } from "../../../lib/ui";
@@ -12,16 +13,23 @@ export function WeeklySummaryGrid({
   runsByWeek,
   selectedWeek,
   compareWeek,
+  onSelectWeek,
+  onCompareWeek,
 }: {
   weeks: WeekSummary[];
   runsByWeek: Map<string, RunRecord[]>;
   selectedWeek: WeekSummary | null;
   compareWeek: WeekSummary | null;
+  onSelectWeek: (weekKey: string) => void;
+  onCompareWeek: (weekKey: string) => void;
 }) {
   return (
     <div className={panelClass}>
       <div className={sectionHeadingClass}>
-        <h3 className="mb-3 mt-0 text-[1.25rem]">Weekly summaries</h3>
+        <div>
+          <h3 className="mb-3 mt-0 text-[1.25rem]">Weekly summaries</h3>
+          <p className="muted">Click a week to select it · Ctrl-click to set the comparison week.</p>
+        </div>
       </div>
       <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
         {weeks.map((week) => (
@@ -30,6 +38,8 @@ export function WeeklySummaryGrid({
             runs={runsByWeek.get(week.weekKey) ?? []}
             isSelected={selectedWeek?.weekKey === week.weekKey}
             isCompare={compareWeek?.weekKey === week.weekKey}
+            onSelect={() => onSelectWeek(week.weekKey)}
+            onCompare={() => onCompareWeek(week.weekKey)}
             key={week.weekKey}
           />
         ))}
@@ -43,19 +53,34 @@ function WeekSummaryCard({
   runs,
   isSelected,
   isCompare,
+  onSelect,
+  onCompare,
 }: {
   week: WeekSummary;
   runs: RunRecord[];
   isSelected: boolean;
   isCompare: boolean;
+  onSelect: () => void;
+  onCompare: () => void;
 }) {
   const timing = summarizeWeekTiming(runs);
   const weekLabel = formatWeekSummaryLabel(week.weekKey, runs);
 
   return (
     <article
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
+      title="Click to select · Ctrl-click to compare"
+      onClick={(event) => (event.ctrlKey || event.metaKey ? onCompare() : onSelect())}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        if (event.ctrlKey || event.metaKey) onCompare();
+        else onSelect();
+      }}
       className={cx(
-        "grid gap-[0.8rem] rounded-xl border border-line bg-surface p-[0.85rem]",
+        "grid cursor-pointer gap-[0.8rem] rounded-xl border border-line bg-surface p-[0.85rem] transition-[border-color,background-color] hover:border-primary/45 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20",
         isSelected && "border-warning/45 bg-warning/10",
         isCompare && "border-info/40 bg-info/10",
         isSelected && isCompare && "border-primary/50 bg-primary/10",

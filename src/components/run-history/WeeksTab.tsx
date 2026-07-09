@@ -3,14 +3,12 @@ import { type RunRecord, type WeekSummary } from "../../lib/runHistory";
 import type { HistoryFilterActions, HistoryFilters } from "./types";
 import { buildWeekWingRows } from "./utils";
 import { HistoryFilterPanel } from "./shared";
+import { splitPanelClass } from "../../lib/ui";
 import { buildDowntimeRows, buildEncounterComparisonRows, buildWingWeekDetail, summarizeWeekTiming } from "./weeks/weekAggregation";
-import { WeekComparisonControls } from "./weeks/WeekComparisonControls";
-import { WeekTimingStats } from "./weeks/WeekTimingStats";
+import { WeekComparisonHeader } from "./weeks/WeekComparisonHeader";
 import { WingPerformanceTable } from "./weeks/WingPerformanceTable";
 import { WingDetailPanel } from "./weeks/WingDetailPanel";
 import { WeeklySummaryGrid } from "./weeks/WeeklySummaryGrid";
-
-const NO_COMPARISON_OPTION = { value: "none", label: "No comparison" } as const;
 
 export function WeeksTab({
   filters,
@@ -54,9 +52,6 @@ export function WeeksTab({
     () => buildDowntimeRows(selectedWingDetail?.raidNights ?? [], compareWingDetail?.raidNights ?? []),
     [compareWingDetail?.raidNights, selectedWingDetail?.raidNights],
   );
-  const selectedWeekOptions = useMemo(() => weeks.map((week) => ({ value: week.weekKey, label: week.weekKey })), [weeks]);
-  const compareWeekOptions = useMemo(() => [NO_COMPARISON_OPTION, ...selectedWeekOptions], [selectedWeekOptions]);
-
   useEffect(() => {
     if (!weeks.length) {
       setSelectedWeekKey("none");
@@ -106,39 +101,42 @@ export function WeeksTab({
         showSortFilter={false}
       />
 
-      <WeekComparisonControls
-        selectedWeekKey={selectedWeekKey}
-        compareWeekKey={compareWeekKey}
+      <WeeklySummaryGrid
+        weeks={weeks}
+        runsByWeek={runsByWeek}
         selectedWeek={selectedWeek}
         compareWeek={compareWeek}
-        selectedWeekOptions={selectedWeekOptions}
-        compareWeekOptions={compareWeekOptions}
-        onSelectedChange={setSelectedWeekKey}
-        onCompareChange={setCompareWeekKey}
+        onSelectWeek={setSelectedWeekKey}
+        onCompareWeek={setCompareWeekKey}
       />
 
-      <WeekTimingStats selectedWeek={selectedWeek} compareWeek={compareWeek} selectedTiming={selectedTiming} compareTiming={compareTiming} />
-
-      <WingPerformanceTable
+      <WeekComparisonHeader
         selectedWeek={selectedWeek}
         compareWeek={compareWeek}
-        rows={wingRows}
-        selectedWing={selectedWing}
-        onSelectWing={setSelectedWing}
+        selectedTiming={selectedTiming}
+        compareTiming={compareTiming}
       />
 
-      <WingDetailPanel
-        selectedWeek={selectedWeek}
-        compareWeek={compareWeek}
-        selectedWing={selectedWing}
-        selectedDetail={selectedWingDetail}
-        compareDetail={compareWingDetail}
-        encounterRows={encounterRows}
-        downtimeRows={downtimeRows}
-        onSelectEncounter={onSelectEncounter}
-      />
+      <div className={splitPanelClass}>
+        <WingPerformanceTable
+          selectedWeek={selectedWeek}
+          compareWeek={compareWeek}
+          rows={wingRows}
+          selectedWing={selectedWing}
+          onSelectWing={setSelectedWing}
+        />
 
-      <WeeklySummaryGrid weeks={weeks} runsByWeek={runsByWeek} selectedWeek={selectedWeek} compareWeek={compareWeek} />
+        <WingDetailPanel
+          selectedWeek={selectedWeek}
+          compareWeek={compareWeek}
+          selectedWing={selectedWing}
+          selectedDetail={selectedWingDetail}
+          compareDetail={compareWingDetail}
+          encounterRows={encounterRows}
+          downtimeRows={downtimeRows}
+          onSelectEncounter={onSelectEncounter}
+        />
+      </div>
     </>
   );
 }
