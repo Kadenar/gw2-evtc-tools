@@ -193,16 +193,16 @@ function TrendChart({ title, nights }: { title: string; nights: RaidNightSummary
                 dataKey="label"
                 tickMargin={10}
                 tick={{ fill: "var(--color-base-content)", fontSize: 12, fontWeight: 600 }}
-                axisLine={{ stroke: "color-mix(in oklab, var(--color-base-content) 22%, transparent)" }}
-                tickLine={{ stroke: "color-mix(in oklab, var(--color-base-content) 22%, transparent)" }}
+                axisLine={false}
+                tickLine={false}
               />
               <YAxis
                 width={54}
                 tickMargin={8}
                 tickFormatter={formatChartTime}
                 tick={{ fill: "var(--color-base-content)", fontSize: 12, fontWeight: 600 }}
-                axisLine={{ stroke: "color-mix(in oklab, var(--color-base-content) 22%, transparent)" }}
-                tickLine={{ stroke: "color-mix(in oklab, var(--color-base-content) 22%, transparent)" }}
+                axisLine={false}
+                tickLine={false}
               />
               <Tooltip
                 cursor={{ stroke: "color-mix(in oklab, var(--color-base-content) 20%, transparent)", strokeDasharray: "4 4" }}
@@ -216,8 +216,8 @@ function TrendChart({ title, nights }: { title: string; nights: RaidNightSummary
                 stroke="var(--color-success)"
                 fill="url(#combat-area)"
                 strokeWidth={2}
-                dot={{ r: 3, fill: "var(--color-success)", stroke: "var(--color-base-100)", strokeWidth: 1.5 }}
-                activeDot={{ r: 4, stroke: "var(--color-base-100)", strokeWidth: 2 }}
+                dot={{ r: 3, fill: "var(--color-success)" }}
+                activeDot={{ r: 4, fill: "var(--color-success)" }}
               />
               <Area
                 type="linear"
@@ -227,8 +227,8 @@ function TrendChart({ title, nights }: { title: string; nights: RaidNightSummary
                 stroke="var(--color-info)"
                 fill="url(#downtime-area)"
                 strokeWidth={2}
-                dot={{ r: 3, fill: "var(--color-info)", stroke: "var(--color-base-100)", strokeWidth: 1.5 }}
-                activeDot={{ r: 4, stroke: "var(--color-base-100)", strokeWidth: 2 }}
+                dot={{ r: 3, fill: "var(--color-info)" }}
+                activeDot={{ r: 4, fill: "var(--color-info)" }}
               />
             </AreaChart>
           </ResponsiveContainer>

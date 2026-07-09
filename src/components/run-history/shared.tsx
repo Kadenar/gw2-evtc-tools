@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { formatSeconds } from "../../lib/format";
 import type { RunRecord } from "../../lib/runHistory";
 import {
@@ -10,11 +11,10 @@ import {
   sectionHeadingClass,
   summaryCardClass,
 } from "../../lib/ui";
+import { buildSessionTimelineItems, SessionTimelineView } from "../SessionTimeline";
 import { AppSelect, type AppSelectOption } from "../ui/app-select";
 import type { HistoryFilterActions, HistoryFilters, RaidNightSummary, ResultFilter, SessionTypeFilter, SortMode } from "./types";
 import {
-  buildTimelineRows,
-  formatClock,
   formatDps,
   formatResult,
   formatRunDate,
@@ -134,6 +134,8 @@ export function HistoryFilterPanel({
 }
 
 export function RaidNightDetail({ night }: { night: RaidNightSummary }) {
+  const [view, setView] = useState<"timeline" | "details">("timeline");
+
   return (
     <div className="grid gap-[0.65rem]">
       <div className="grid gap-[0.6rem] grid-cols-[repeat(auto-fit,minmax(150px,1fr))]">
@@ -143,7 +145,27 @@ export function RaidNightDetail({ night }: { night: RaidNightSummary }) {
         <Metric label="Kills" value={String(night.kills)} />
         <Metric label="Wipes" value={String(night.wipes)} />
       </div>
-      <RunTimeline night={night} />
+      <div role="tablist" className="tabs tabs-box" aria-label="Selected raid night view">
+        <button
+          type="button"
+          role="tab"
+          className={`tab ${view === "timeline" ? "tab-active" : ""}`}
+          aria-selected={view === "timeline"}
+          onClick={() => setView("timeline")}
+        >
+          Timeline
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className={`tab ${view === "details" ? "tab-active" : ""}`}
+          aria-selected={view === "details"}
+          onClick={() => setView("details")}
+        >
+          Details
+        </button>
+      </div>
+      {view === "timeline" ? <RunTimeline night={night} /> : <RunList night={night} />}
     </div>
   );
 }
@@ -158,40 +180,36 @@ export function Metric({ label, value }: { label: string; value: string }) {
 }
 
 export function RunTimeline({ night }: { night: RaidNightSummary }) {
-  const rows = buildTimelineRows(night);
+  const items = buildSessionTimelineItems(night.runs);
 
   return (
+    <SessionTimelineView
+      items={items}
+      emptyDescription="The saved runs do not include enough timing data to build a timeline view."
+    />
+  );
+}
+
+function RunList({ night }: { night: RaidNightSummary }) {
+  return (
     <div className="grid gap-[0.65rem]">
-      {rows.map((row) =>
-        row.type === "run" ? (
-          <a
-            className={cx(
-              "grid min-w-0 items-center gap-[0.55rem] rounded-[0.7rem] border border-line bg-surface px-[0.8rem] py-[0.7rem] text-fg no-underline grid-cols-[82px_minmax(160px,1fr)_fit-content(140px)_72px] max-nav:grid-cols-1",
-              row.run.success === true && "border-success/40",
-              row.run.success === false && "border-error/40",
-            )}
-            href={row.run.permalink}
-            target="_blank"
-            rel="noreferrer"
-            key={row.id}
-          >
-            <span className="min-w-0 wrap-anywhere text-muted">{formatClock(getRunStart(row.run))}</span>
-            <strong className="min-w-0 wrap-anywhere">{row.run.bossName}</strong>
-            <span className="min-w-0 whitespace-nowrap text-muted">{formatResult(row.run.success)}</span>
-            <span className="min-w-0 whitespace-nowrap text-muted">{formatSeconds(row.run.duration)}</span>
-          </a>
-        ) : (
-          <div
-            className="grid min-w-0 items-center gap-[0.55rem] rounded-[0.7rem] border border-line border-dashed bg-base-200 px-[0.8rem] py-[0.7rem] text-fg grid-cols-[82px_minmax(160px,1fr)_fit-content(140px)_72px] max-nav:grid-cols-1"
-            key={row.id}
-          >
-            <span className="min-w-0 wrap-anywhere text-muted" />
-            <strong className="min-w-0 wrap-anywhere">{row.label}</strong>
-            <span className="min-w-0 whitespace-nowrap text-muted">{row.source}</span>
-            <span className="min-w-0 whitespace-nowrap text-muted">{formatSeconds(row.seconds)}</span>
-          </div>
-        ),
-      )}
+      {night.runs.map((run) => (
+        <a
+          className={cx(
+            "grid min-w-0 items-center gap-[0.55rem] rounded-[0.7rem] border border-line bg-surface px-[0.8rem] py-[0.7rem] text-fg no-underline grid-cols-[minmax(160px,1fr)_fit-content(140px)_72px] max-nav:grid-cols-1",
+            run.success === true && "border-success/40",
+            run.success === false && "border-error/40",
+          )}
+          href={run.permalink}
+          target="_blank"
+          rel="noreferrer"
+          key={run.id}
+        >
+          <strong className="min-w-0 wrap-anywhere">{run.bossName}</strong>
+          <span className="min-w-0 whitespace-nowrap text-muted">{formatResult(run.success)}</span>
+          <span className="min-w-0 whitespace-nowrap text-muted">{formatSeconds(run.duration)}</span>
+        </a>
+      ))}
     </div>
   );
 }

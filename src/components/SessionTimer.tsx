@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { EmptyCard } from "./ui/empty-card";
 import { FileDropzone } from "./ui/file-dropzone";
 import { AppSelect } from "./ui/app-select";
+import { buildSessionTimelineItems, SessionTimelineView } from "./SessionTimeline";
 import {
   DpsReportDomain,
   SessionLog,
@@ -22,31 +23,6 @@ type BreakdownView = "timeline" | "details";
 type FetchError = {
   source: string;
   message: string;
-};
-
-type TimelineItem =
-  | {
-      type: "pull";
-      key: string;
-      log: SessionLog;
-      duration: number;
-    }
-  | {
-      type: "gap";
-      key: string;
-      start: number;
-      end: number;
-      duration: number;
-      fromWing: number | null;
-      toWing: number | null;
-      wingChanged: boolean;
-    };
-
-type TimelineRow = {
-  key: string;
-  label: string;
-  items: TimelineItem[];
-  transitionAfter?: Extract<TimelineItem, { type: "gap" }>;
 };
 
 const UPLOAD_DOMAIN_OPTIONS = [
@@ -75,7 +51,7 @@ export function SessionTimer() {
   const summary = useMemo(() => summarizeSession(logs), [logs]);
   const logDetailGroups = useMemo(() => summary.wings.filter((wing) => wing.logs.length > 0), [summary.wings]);
   const extractedLinks = useMemo(() => extractPermalinks(linksText), [linksText]);
-  const timelineItems = useMemo(() => buildTimelineItems(summary.logs), [summary.logs]);
+  const timelineItems = useMemo(() => buildSessionTimelineItems(summary.logs), [summary.logs]);
 
   async function fetchLinks() {
     setIsWorking(true);
@@ -331,99 +307,10 @@ export function SessionTimer() {
         </div>
 
         {!summary.logs.length ? <EmptyCard title="No logs loaded yet" description="Fetch dps.report links or upload EVTC files to generate a session breakdown." /> : null}
-        {summary.logs.length > 0 && breakdownView === "timeline" ? <TimelineView items={timelineItems} /> : null}
+        {summary.logs.length > 0 && breakdownView === "timeline" ? <SessionTimelineView items={timelineItems} /> : null}
         {summary.logs.length > 0 && breakdownView === "details" ? <WingDetails logDetailGroups={logDetailGroups} /> : null}
       </div>
     </section>
-  );
-}
-
-function TimelineView({ items }: { items: TimelineItem[] }) {
-  if (!items.length) {
-    return <EmptyCard title="No usable encounter times" description="The loaded logs do not include enough timing data to build a timeline view." />;
-  }
-
-  const firstPull = items.find((item): item is Extract<TimelineItem, { type: "pull" }> => item.type === "pull");
-  const lastPull = [...items].reverse().find((item): item is Extract<TimelineItem, { type: "pull" }> => item.type === "pull");
-  const rows = buildTimelineRows(items);
-
-  return (
-    <div className="grid gap-[0.7rem]">
-      <div className="grid gap-1 text-[0.9rem] text-muted sm:flex sm:justify-between sm:gap-4">
-        <span>{firstPull ? formatDateTime(firstPull.log.start) : "N/A"}</span>
-        <span>{lastPull ? formatDateTime(lastPull.log.end) : "N/A"}</span>
-      </div>
-      <div className="overflow-x-auto rounded-2xl border border-line bg-base-100" aria-label="Session timeline">
-        <div className="grid min-w-[760px] gap-[0.7rem] p-3">
-          {rows.map((row) => (
-            <div className="grid gap-[0.35rem]" key={row.key}>
-              <div className="flex items-center text-[0.78rem] font-black uppercase text-accent-2 tracking-[0.08em]">
-                <span>{row.label}</span>
-              </div>
-              <div className="flex min-h-[4.625rem] items-stretch gap-[0.3rem]">{row.items.map((item) => renderTimelineItem(item))}</div>
-              {row.transitionAfter ? (
-                <div className="mx-auto mt-[0.2rem] flex w-max max-w-full items-center justify-center gap-2 rounded-full border border-dashed border-primary/55 bg-primary/8 px-3 py-[0.35rem] text-[0.86rem] text-accent-2">
-                  <span>
-                    {formatWing(row.transitionAfter.fromWing)} -&gt; {formatWing(row.transitionAfter.toWing)}
-                  </span>
-                  <strong>{formatSeconds(row.transitionAfter.duration)} downtime</strong>
-                </div>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-x-[0.9rem] gap-y-[0.55rem] text-[0.9rem] text-muted" aria-label="Timeline legend">
-        <span>
-          <i className="legend-dot kill" /> Kill
-        </span>
-        <span>
-          <i className="legend-dot wipe" /> Wipe
-        </span>
-        <span>
-          <i className="legend-dot downtime" /> Downtime
-        </span>
-        <span>
-          <i className="legend-dot transition" /> Wing transition
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function renderTimelineItem(item: TimelineItem) {
-  if (item.type === "pull") {
-    return (
-      <a
-        className={`timeline-segment timeline-pull ${getPullClass(item.log)}`}
-        href={item.log.permalink}
-        target="_blank"
-        rel="noreferrer"
-        style={{ flexGrow: Math.max(1, item.duration) }}
-        title={`${item.log.bossName} - ${getPullResult(item.log)} - ${formatSeconds(item.duration)}`}
-        key={item.key}
-      >
-        <span className="timeline-label">
-          {item.log.bossName}
-          {item.log.isCm ? <span className="timeline-badge">CM</span> : null}
-        </span>
-        <span className="timeline-subline">
-          {getPullResult(item.log)} - {formatSeconds(item.duration)}
-        </span>
-      </a>
-    );
-  }
-
-  return (
-    <div
-      className="timeline-segment timeline-gap"
-      style={{ flexGrow: Math.max(1, item.duration) }}
-      title={`Downtime - ${formatSeconds(item.duration)}`}
-      key={item.key}
-    >
-      <span className="timeline-label">Downtime</span>
-      <span className="timeline-subline">{formatSeconds(item.duration)}</span>
-    </div>
   );
 }
 
@@ -505,83 +392,9 @@ function mergeLogs(current: SessionLog[], incoming: SessionLog[]): SessionLog[] 
   return Array.from(byKey.values());
 }
 
-function buildTimelineItems(logs: SessionLog[]): TimelineItem[] {
-  const sorted = logs
-    .filter((log) => Number.isFinite(log.start) && log.start > 0 && Number.isFinite(log.end) && log.end >= log.start)
-    .sort((a, b) => a.start - b.start || a.end - b.end);
-
-  const items: TimelineItem[] = [];
-  let previous: SessionLog | null = null;
-
-  for (const log of sorted) {
-    if (previous && log.start > previous.end) {
-      items.push({
-        type: "gap",
-        key: `gap-${previous.permalink || previous.source}-${log.permalink || log.source}`,
-        start: previous.end,
-        end: log.start,
-        duration: log.start - previous.end,
-        fromWing: previous.wing,
-        toWing: log.wing,
-        wingChanged: previous.wing !== log.wing,
-      });
-    }
-
-    items.push({
-      type: "pull",
-      key: `pull-${log.permalink || log.source}`,
-      log,
-      duration: Math.max(1, log.duration),
-    });
-
-    previous = !previous || log.end >= previous.end ? log : previous;
-  }
-
-  return items;
-}
-
-function buildTimelineRows(items: TimelineItem[]): TimelineRow[] {
-  const rows: TimelineRow[] = [];
-  let currentItems: TimelineItem[] = [];
-
-  function pushRow(transitionAfter?: Extract<TimelineItem, { type: "gap" }>) {
-    if (!currentItems.length) return;
-
-    rows.push({
-      key: `timeline-row-${rows.length}`,
-      label: getTimelineRowLabel(currentItems),
-      items: currentItems,
-      transitionAfter,
-    });
-    currentItems = [];
-  }
-
-  for (const item of items) {
-    if (item.type === "gap" && item.wingChanged) {
-      pushRow(item);
-      continue;
-    }
-
-    currentItems.push(item);
-  }
-
-  pushRow();
-  return rows;
-}
-
-function getTimelineRowLabel(items: TimelineItem[]): string {
-  const pull = items.find((item): item is Extract<TimelineItem, { type: "pull" }> => item.type === "pull");
-  return pull ? formatWing(pull.log.wing) : "Timeline";
-}
-
 function getPullResult(log: SessionLog): string {
   if (log.success == null) return "N/A";
   return log.success ? "Success" : "Fail";
-}
-
-function getPullClass(log: SessionLog): string {
-  if (log.success == null) return "unknown";
-  return log.success ? "kill" : "wipe";
 }
 
 function formatRunSessionType(sessionType: RunSessionType): string {

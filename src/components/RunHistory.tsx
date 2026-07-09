@@ -60,6 +60,7 @@ export function RunHistory() {
   const [isLoading, setIsLoading] = useState(true);
   const [isWorking, setIsWorking] = useState(false);
   const [status, setStatus] = useState("");
+  const [statusTone, setStatusTone] = useState<"info" | "error">("info");
   const [importMode, setImportMode] = useState<ImportMode>("merge");
   const [view, setView] = useState<HistoryView>("dashboard");
   const [selectedEncounterKey, setSelectedEncounterKey] = useState<string | null>(null);
@@ -121,6 +122,16 @@ export function RunHistory() {
     void ensureRunPhaseData(encounter.runsList);
   }, [selectedEncounterKey]);
 
+  useEffect(() => {
+    if (!status || statusTone !== "info") return;
+
+    const timeoutId = window.setTimeout(() => {
+      setStatus((current) => (current === status ? "" : current));
+    }, 4000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [status, statusTone]);
+
   const selectedEncounterPhaseStatus = useMemo(() => {
     if (!selectedEncounter) return null;
 
@@ -135,6 +146,7 @@ export function RunHistory() {
 
   async function loadRuns() {
     if (!isRunHistorySupported()) {
+      setStatusTone("error");
       setStatus("IndexedDB is not available in this browser.");
       setIsLoading(false);
       return;
@@ -143,8 +155,10 @@ export function RunHistory() {
     setIsLoading(true);
     try {
       setRuns(await getAllRunRecords());
+      setStatusTone("info");
       setStatus("");
     } catch (err) {
+      setStatusTone("error");
       setStatus(err instanceof Error ? err.message : "Could not load run history.");
     } finally {
       setIsLoading(false);
@@ -157,8 +171,10 @@ export function RunHistory() {
       const backup = await exportRunHistoryBackup();
       const json = JSON.stringify(backup, null, 2);
       downloadBlob(new Blob([json], { type: "application/json" }), `gw2-run-history-${backup.exportedAt.slice(0, 10)}.json`);
+      setStatusTone("info");
       setStatus(`Exported ${backup.runs.length} run${backup.runs.length === 1 ? "" : "s"}.`);
     } catch (err) {
+      setStatusTone("error");
       setStatus(err instanceof Error ? err.message : "Could not export backup.");
     } finally {
       setIsWorking(false);
@@ -175,6 +191,7 @@ export function RunHistory() {
       const parsed = JSON.parse(await file.text()) as unknown;
       await importParsedBackup(parsed, importMode);
     } catch (err) {
+      setStatusTone("error");
       setStatus(err instanceof Error ? err.message : "Could not import backup.");
     } finally {
       setIsWorking(false);
@@ -188,8 +205,10 @@ export function RunHistory() {
     try {
       const parsed = await fetchBundledRunHistoryBackup(bundledRunHistorySource);
       await importParsedBackup(parsed, "replace");
+      setStatusTone("info");
       setStatus(`Loaded bundled backup from ${bundledRunHistorySource.name}.`);
     } catch (err) {
+      setStatusTone("error");
       setStatus(err instanceof Error ? err.message : "Could not load bundled backup.");
     } finally {
       setIsWorking(false);
@@ -199,6 +218,7 @@ export function RunHistory() {
   async function importParsedBackup(parsed: unknown, mode: ImportMode) {
     const result = await importRunHistoryBackup(parsed, mode);
     await loadRuns();
+    setStatusTone("info");
     setStatus(
       mode === "replace"
         ? `Restored ${result.saved} run${result.saved === 1 ? "" : "s"}.`
@@ -263,8 +283,10 @@ export function RunHistory() {
       await Promise.all(ids.map((id) => deleteRunRecord(id)));
       setSelectedRunIds((current) => current.filter((id) => !ids.includes(id)));
       await loadRuns();
+      setStatusTone("info");
       setStatus(successMessage);
     } catch (err) {
+      setStatusTone("error");
       setStatus(err instanceof Error ? err.message : "Could not delete run history.");
     } finally {
       setIsWorking(false);
@@ -279,8 +301,10 @@ export function RunHistory() {
       await clearRunHistory();
       await loadRuns();
       setSelectedRunIds([]);
+      setStatusTone("info");
       setStatus("Cleared run history.");
     } catch (err) {
+      setStatusTone("error");
       setStatus(err instanceof Error ? err.message : "Could not clear run history.");
     } finally {
       setIsWorking(false);
@@ -459,7 +483,7 @@ export function RunHistory() {
       </aside>
 
       <div className="grid gap-[0.65rem]">
-        {status ? <p className="status-text">{status}</p> : null}
+        {status ? <p className={cx("status-text", statusTone === "error" && "error-text")}>{status}</p> : null}
         {isLoading ? <div className={panelClass}><p className="muted">Loading run history...</p></div> : null}
         {!isLoading && !hasRuns ? (
           <div className={panelClass}>

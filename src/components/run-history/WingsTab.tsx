@@ -98,16 +98,16 @@ export function WingsTab({ wingSummaries }: { wingSummaries: WingHistorySummary[
                       tickMargin={10}
                       tickFormatter={formatWingTrendTick}
                       tick={{ fill: "var(--color-base-content)", fontSize: 12, fontWeight: 600 }}
-                      axisLine={{ stroke: "color-mix(in oklab, var(--color-base-content) 22%, transparent)" }}
-                      tickLine={{ stroke: "color-mix(in oklab, var(--color-base-content) 22%, transparent)" }}
+                      axisLine={false}
+                      tickLine={false}
                     />
                     <YAxis
                       width={62}
                       tickMargin={8}
                       tickFormatter={formatWingTrendDuration}
                       tick={{ fill: "var(--color-base-content)", fontSize: 12, fontWeight: 600 }}
-                      axisLine={{ stroke: "color-mix(in oklab, var(--color-base-content) 22%, transparent)" }}
-                      tickLine={{ stroke: "color-mix(in oklab, var(--color-base-content) 22%, transparent)" }}
+                      axisLine={false}
+                      tickLine={false}
                     />
                     <Tooltip
                       cursor={{ stroke: "color-mix(in oklab, var(--color-base-content) 22%, transparent)", strokeDasharray: "4 4" }}
@@ -121,8 +121,8 @@ export function WingsTab({ wingSummaries }: { wingSummaries: WingHistorySummary[
                         name={`Wing ${wing}`}
                         stroke={WING_LINE_COLORS[index % WING_LINE_COLORS.length]}
                         strokeWidth={2.5}
-                        dot={{ r: 3, fill: WING_LINE_COLORS[index % WING_LINE_COLORS.length], stroke: "var(--color-base-100)", strokeWidth: 1.5 }}
-                        activeDot={{ r: 5, stroke: "var(--color-base-100)", strokeWidth: 2 }}
+                        dot={{ r: 3, fill: WING_LINE_COLORS[index % WING_LINE_COLORS.length] }}
+                        activeDot={{ r: 5, fill: WING_LINE_COLORS[index % WING_LINE_COLORS.length] }}
                         connectNulls={false}
                         key={wing}
                       />

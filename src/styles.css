@@ -201,7 +201,7 @@
   }
 
   .timeline-segment {
-    @apply relative grid min-w-20.5 content-center gap-[0.2rem] overflow-hidden rounded-[0.7rem] border border-line px-2 py-[0.4rem] no-underline;
+    @apply relative grid min-w-20.5 content-center gap-[0.1rem] overflow-hidden rounded-[0.7rem] border border-line px-[0.7rem] py-[0.3rem] no-underline;
   }
 
   .timeline-segment::before {
@@ -258,11 +258,11 @@
   }
 
   .timeline-label {
-    @apply font-black leading-[1.2] wrap-anywhere;
+    @apply font-black leading-[1.1] wrap-anywhere;
   }
 
   .timeline-subline {
-    @apply text-[0.82rem] text-muted-foreground;
+    @apply text-[0.76rem] leading-[1.1] text-muted-foreground;
   }
 
   .timeline-badge {
@@ -291,6 +291,17 @@
 
   .legend-dot.transition {
     background: var(--color-accent-2);
+  }
+
+  .recharts-wrapper,
+  .recharts-surface,
+  .recharts-wrapper:focus,
+  .recharts-wrapper:focus-visible,
+  .recharts-surface:focus,
+  .recharts-surface:focus-visible {
+    outline: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
   }
 }
 
