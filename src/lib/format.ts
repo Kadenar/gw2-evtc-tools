@@ -36,14 +36,17 @@ export function formatSeconds(totalSeconds: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
+// Constructed once at module load (Intl.* constructors are relatively expensive) and reused.
+const dateTimeFormat = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
 export function formatDateTime(unixSeconds: number): string {
   if (!Number.isFinite(unixSeconds)) return "—";
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(unixSeconds * 1000));
+  return dateTimeFormat.format(new Date(unixSeconds * 1000));
 }
 
 export function makeSafeFilename(name: string): string {

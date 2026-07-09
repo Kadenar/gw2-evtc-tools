@@ -589,9 +589,16 @@ export function formatPercent(value: number | null): string {
   return `${Math.round(value * 100)}%`;
 }
 
+// Intl.* constructors are relatively expensive; build each formatter once and reuse.
+const dpsNumberFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+const monthDayYearFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
+const runDateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+const clockFormat = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+const shortDateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+
 export function formatDps(value: number | null): string {
   if (value == null) return "N/A";
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
+  return dpsNumberFormat.format(value);
 }
 
 export function formatWingSet(wings: number[]): string {
@@ -622,7 +629,7 @@ function getNightKey(run: RunRecord): string {
 }
 
 function formatNightLabel(key: string): string {
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${key}T12:00:00`));
+  return monthDayYearFormat.format(new Date(`${key}T12:00:00`));
 }
 
 function formatShortNightLabel(key: string): string {
@@ -630,14 +637,7 @@ function formatShortNightLabel(key: string): string {
 }
 
 export function formatRunDate(run: RunRecord): string {
-  const date = new Date(getRunStart(run) * 1000);
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
+  return runDateFormat.format(new Date(getRunStart(run) * 1000));
 }
 
 export function formatPullTickDate(run: RunRecord): string {
@@ -645,15 +645,11 @@ export function formatPullTickDate(run: RunRecord): string {
 }
 
 export function formatCalendarDate(unixSeconds: number): string {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(unixSeconds * 1000));
+  return monthDayYearFormat.format(new Date(unixSeconds * 1000));
 }
 
 export function formatClock(unixSeconds: number): string {
-  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(unixSeconds * 1000));
+  return clockFormat.format(new Date(unixSeconds * 1000));
 }
 
 /** Shared guard: returns current - previous, or null when either side is missing/non-finite. */
@@ -694,7 +690,7 @@ export function formatSignedCountDelta(current: number | null | undefined, previ
 
 /** Short "MMM d" date label used by chart axis ticks. */
 export function formatShortDate(date: Date): string {
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(date);
+  return shortDateFormat.format(date);
 }
 
 /** Duration axis tick: "0:00" for empty/invalid, otherwise m:ss / h:mm:ss. */

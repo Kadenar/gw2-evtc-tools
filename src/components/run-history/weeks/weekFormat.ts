@@ -8,6 +8,10 @@ import type { EncounterSummary } from "../types";
 
 export type DetailTab = "overview" | "encounters" | "downtime";
 
+// Constructed once and reused; Intl.* constructors are relatively expensive.
+const monthFormatter = new Intl.DateTimeFormat(undefined, { month: "short" });
+const dayFormatter = new Intl.DateTimeFormat(undefined, { day: "numeric" });
+
 export function formatEncounterRecord(encounter: EncounterSummary | null): string {
   if (!encounter) return "N/A";
   return `${encounter.kills} ${pluralize(encounter.kills, "kill")} / ${encounter.wipes} ${pluralize(encounter.wipes, "wipe")}`;
@@ -30,8 +34,6 @@ export function formatWeekSummaryLabel(weekKey: string, runs: RunRecord[]): stri
   const sortedRuns = [...runs].sort((left, right) => getRunStart(left) - getRunStart(right));
   const firstDate = new Date(getRunStart(sortedRuns[0]) * 1000);
   const lastDate = new Date(getRunStart(sortedRuns[sortedRuns.length - 1]) * 1000);
-  const monthFormatter = new Intl.DateTimeFormat(undefined, { month: "short" });
-  const dayFormatter = new Intl.DateTimeFormat(undefined, { day: "numeric" });
 
   const firstMonth = monthFormatter.format(firstDate);
   const lastMonth = monthFormatter.format(lastDate);
