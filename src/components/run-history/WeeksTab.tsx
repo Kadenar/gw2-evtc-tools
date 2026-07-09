@@ -24,12 +24,36 @@ import { HistoryFilterPanel, StatCard } from "./shared";
 type DetailTab = "overview" | "encounters" | "downtime" | "players";
 
 type WingWeekDetail = ReturnType<typeof buildWingWeekDetail>;
+type PlayerEncounterEntry = {
+  encounterKey: string;
+  encounter: string;
+  dps: number | null;
+};
 type AggregatedPlayer = {
   player: { name: string; account: string | null; professions: string[] };
   dpsValues: number[];
-  encounterValues: Map<string, number[]>;
+  encounterValues: Map<string, { encounter: string; values: number[] }>;
   averageTargetDps: number | null;
-  encounterEntries: Array<{ encounter: string; dps: number | null }>;
+  encounterEntries: PlayerEncounterEntry[];
+  encounterMap: Map<string, number | null>;
+};
+type PlayerAggregate = {
+  averageTargetDps: number | null;
+  encounterEntries: PlayerEncounterEntry[];
+  encounterMap: Map<string, number | null>;
+};
+type PlayerComparisonRow = {
+  key: string;
+  name: string;
+  account: string | null;
+  professions: string[];
+  current: PlayerAggregate | null;
+  previous: PlayerAggregate | null;
+};
+type PlayerEncounterColumn = {
+  encounterKey: string;
+  label: string;
+  isCm: boolean;
 };
 
 const NO_COMPARISON_OPTION = { value: "none", label: "No comparison" } as const;
@@ -79,9 +103,15 @@ export function WeeksTab({
     () => buildDowntimeRows(selectedWingDetail?.raidNights ?? [], compareWingDetail?.raidNights ?? []),
     [compareWingDetail?.raidNights, selectedWingDetail?.raidNights],
   );
-  const playerRows = useMemo(
-    () => buildPlayerComparisonRows(selectedWingDetail?.runList ?? [], compareWingDetail?.runList ?? []),
-    [compareWingDetail?.runList, selectedWingDetail?.runList],
+  const playerTable = useMemo(
+    () =>
+      buildPlayerComparisonTable(
+        selectedWingDetail?.runList ?? [],
+        compareWingDetail?.runList ?? [],
+        selectedWingDetail?.encounters ?? [],
+        compareWingDetail?.encounters ?? [],
+      ),
+    [compareWingDetail?.encounters, compareWingDetail?.runList, selectedWingDetail?.encounters, selectedWingDetail?.runList],
   );
   const selectedWeekOptions = useMemo(() => weeks.map((week) => ({ value: week.weekKey, label: week.weekKey })), [weeks]);
   const compareWeekOptions = useMemo(() => [NO_COMPARISON_OPTION, ...weeks.map((week) => ({ value: week.weekKey, label: week.weekKey }))], [weeks]);
@@ -148,24 +178,27 @@ export function WeeksTab({
             <p className="muted">Choose the saved weeks to compare.</p>
           </div>
         </div>
-        <div className="grid items-end gap-[0.9rem] [grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)] max-nav:grid-cols-1">
+        <div className="grid items-end gap-[0.9rem] [grid-template-columns:minmax(0,1fr)_minmax(140px,160px)_minmax(0,1fr)] max-nav:grid-cols-1">
           <label className={cx(fieldClass, compactFieldClass, "m-0 max-w-none")}>
             <span className="text-muted">Selected week</span>
             <AppSelect value={selectedWeekKey} onValueChange={setSelectedWeekKey} options={selectedWeekOptions} />
           </label>
-          <button
-            type="button"
-            className="inline-flex min-h-12 min-w-12 cursor-pointer items-center justify-center rounded-[0.9rem] border border-line bg-base-200 p-[0.8rem] text-accent-2"
-            disabled={!selectedWeek || !compareWeek}
-            onClick={() => {
-              if (!selectedWeek || !compareWeek) return;
-              setSelectedWeekKey(compareWeek.weekKey);
-              setCompareWeekKey(selectedWeek.weekKey);
-            }}
-            aria-label="Swap selected and comparison weeks"
-          >
-            <span aria-hidden="true">&lt;&gt;</span>
-          </button>
+          <div className={cx(fieldClass, "m-0")}>
+            <span className="text-muted">Swap</span>
+            <button
+              type="button"
+              className="inline-flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl border border-line bg-base-100 px-3.5 text-center text-[0.92rem] font-black text-fg transition-[border-color,box-shadow,background-color] hover:border-primary/45 hover:bg-primary/10 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:border-line disabled:bg-base-200 disabled:text-muted"
+              disabled={!selectedWeek || !compareWeek}
+              onClick={() => {
+                if (!selectedWeek || !compareWeek) return;
+                setSelectedWeekKey(compareWeek.weekKey);
+                setCompareWeekKey(selectedWeek.weekKey);
+              }}
+              aria-label="Swap selected and comparison weeks"
+            >
+              Swap weeks
+            </button>
+          </div>
           <label className={cx(fieldClass, compactFieldClass, "m-0 max-w-none")}>
             <span className="text-muted">Compare against</span>
             <AppSelect value={compareWeekKey} onValueChange={setCompareWeekKey} options={compareWeekOptions} />
@@ -302,7 +335,8 @@ export function WeeksTab({
               <WingPlayersPanel
                 selectedWeek={selectedWeek}
                 compareWeek={compareWeek}
-                rows={playerRows}
+                encounterColumns={playerTable.encounterColumns}
+                rows={playerTable.rows}
                 selectedRuns={selectedWingDetail?.runList ?? []}
                 compareRuns={compareWingDetail?.runList ?? []}
               />
@@ -315,12 +349,9 @@ export function WeeksTab({
 
       <div className={panelClass}>
         <div className={sectionHeadingClass}>
-          <div>
-            <h3 className="mb-3 mt-0 text-[1.25rem]">Weekly summaries</h3>
-            <p className="muted">Saved week archive.</p>
-          </div>
+          <h3 className="mb-3 mt-0 text-[1.25rem]">Weekly summaries</h3>
         </div>
-        <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
+        <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
           {weeks.map((week) => (
             <WeekSummaryCard
               week={week}
@@ -497,20 +528,15 @@ function WingDowntimePanel({
 function WingPlayersPanel({
   selectedWeek,
   compareWeek,
+  encounterColumns,
   rows,
   selectedRuns,
   compareRuns,
 }: {
   selectedWeek: WeekSummary | null;
   compareWeek: WeekSummary | null;
-  rows: Array<{
-    key: string;
-    name: string;
-    account: string | null;
-    professions: string[];
-    current: PlayerAggregate | null;
-    previous: PlayerAggregate | null;
-  }>;
+  encounterColumns: PlayerEncounterColumn[];
+  rows: PlayerComparisonRow[];
   selectedRuns: RunRecord[];
   compareRuns: RunRecord[];
 }) {
@@ -535,28 +561,41 @@ function WingPlayersPanel({
     <>
       <p className="muted">
         Loaded {selectedCached}/{selectedRuns.length} run{selectedRuns.length === 1 ? "" : "s"} for {selectedWeek?.weekKey ?? "selected"}
-        {compareWeek ? ` and ${compareCached}/${compareRuns.length} for ${compareWeek.weekKey}` : ""}.
+        {compareWeek ? ` and ${compareCached}/${compareRuns.length} for ${compareWeek.weekKey}` : ""}. Each cell shows current, delta, and comparison DPS.
       </p>
       <div className={tableWrapClass}>
-        <table className="table-fixed">
+        <table className="min-w-full [&_td]:align-top [&_td]:px-3 [&_td]:py-[0.65rem] [&_th]:px-3 [&_th]:py-[0.65rem]">
           <thead>
             <tr>
-              <th>Player</th>
-              <th>{selectedWeek?.weekKey ?? "Selected"} encounters</th>
-              <th>{compareWeek?.weekKey ?? "Compare"} encounters</th>
+              <th className="min-w-[16rem]">Player</th>
+              <th className="min-w-[11rem]">
+                Wing Avg
+                <small className="block text-[0.74rem] font-normal text-muted">current / delta / compare</small>
+              </th>
+              {encounterColumns.map((column) => (
+                <th className="min-w-[11rem]" key={column.encounterKey}>
+                  <span>{column.label}</span>
+                  {column.isCm ? <span className="badge badge-sm badge-outline ml-1 align-middle">CM</span> : null}
+                  <small className="block text-[0.74rem] font-normal text-muted">current / delta / compare</small>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.key}>
                 <td>
-                  <div className="grid gap-[0.15rem]">
-                    <strong>{row.name}</strong>
-                    <small className="block">{[row.professions.join(", "), row.account].filter(Boolean).join(" | ") || "No account data"}</small>
+                  <div className="grid gap-[0.1rem] leading-tight">
+                    <strong className="text-[0.95rem]">{row.name}</strong>
+                    <small className="block text-[0.78rem] leading-[1.2]">{[row.professions.join(", "), row.account].filter(Boolean).join(" | ") || "No account data"}</small>
                   </div>
                 </td>
-                <td>{renderPlayerEncounterBreakdown(row.current)}</td>
-                <td>{renderPlayerEncounterBreakdown(row.previous)}</td>
+                <td>{renderPlayerComparisonCell(row.current?.averageTargetDps ?? null, row.previous?.averageTargetDps ?? null)}</td>
+                {encounterColumns.map((column) => (
+                  <td key={`${row.key}:${column.encounterKey}`}>
+                    {renderPlayerComparisonCell(row.current?.encounterMap.get(column.encounterKey) ?? null, row.previous?.encounterMap.get(column.encounterKey) ?? null)}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
@@ -687,17 +726,28 @@ function buildDowntimeRows(current: RaidNightSummary[], previous: RaidNightSumma
   }).filter((row) => row.current || row.previous);
 }
 
-type PlayerAggregate = {
-  averageTargetDps: number | null;
-  encounterEntries: Array<{ encounter: string; dps: number | null }>;
-};
-
-function buildPlayerComparisonRows(currentRuns: RunRecord[], previousRuns: RunRecord[]) {
+function buildPlayerComparisonTable(
+  currentRuns: RunRecord[],
+  previousRuns: RunRecord[],
+  currentEncounters: EncounterSummary[],
+  previousEncounters: EncounterSummary[],
+) {
   const currentByPlayer = aggregatePlayers(currentRuns);
   const previousByPlayer = aggregatePlayers(previousRuns);
+  const currentByEncounter = new Map(currentEncounters.map((encounter) => [encounter.encounterKey, encounter]));
+  const previousByEncounter = new Map(previousEncounters.map((encounter) => [encounter.encounterKey, encounter]));
+  const encounterColumns = Array.from(new Set([...currentByEncounter.keys(), ...previousByEncounter.keys()]))
+    .map((encounterKey) => currentByEncounter.get(encounterKey) ?? previousByEncounter.get(encounterKey))
+    .filter((encounter): encounter is EncounterSummary => encounter != null)
+    .sort(compareEncounterSummaries)
+    .map((encounter) => ({
+      encounterKey: encounter.encounterKey,
+      label: shortEncounterName(encounter.bossName),
+      isCm: encounter.isCm,
+    }));
   const keys = Array.from(new Set([...currentByPlayer.keys(), ...previousByPlayer.keys()]));
 
-  return keys
+  const rows = keys
     .map((key) => {
       const current = currentByPlayer.get(key) ?? null;
       const previous = previousByPlayer.get(key) ?? null;
@@ -709,16 +759,22 @@ function buildPlayerComparisonRows(currentRuns: RunRecord[], previousRuns: RunRe
         name: player.name,
         account: player.account,
         professions: player.professions,
-        current: current ? { averageTargetDps: current.averageTargetDps, encounterEntries: current.encounterEntries } : null,
-        previous: previous ? { averageTargetDps: previous.averageTargetDps, encounterEntries: previous.encounterEntries } : null,
+        current: current
+          ? { averageTargetDps: current.averageTargetDps, encounterEntries: current.encounterEntries, encounterMap: current.encounterMap }
+          : null,
+        previous: previous
+          ? { averageTargetDps: previous.averageTargetDps, encounterEntries: previous.encounterEntries, encounterMap: previous.encounterMap }
+          : null,
       };
-      })
+    })
     .filter((row): row is NonNullable<typeof row> => row != null)
     .sort(
       (left, right) =>
         (right.current?.averageTargetDps ?? right.previous?.averageTargetDps ?? -1)
         - (left.current?.averageTargetDps ?? left.previous?.averageTargetDps ?? -1),
     );
+
+  return { encounterColumns, rows };
 }
 
 function aggregatePlayers(runs: RunRecord[]) {
@@ -738,9 +794,10 @@ function aggregatePlayers(runs: RunRecord[]) {
         const existing = byPlayer.get(key) ?? {
           player: { name: player.name, account: player.account, professions: [] as string[] },
           dpsValues: [],
-          encounterValues: new Map<string, number[]>(),
+          encounterValues: new Map<string, { encounter: string; values: number[] }>(),
           averageTargetDps: null,
           encounterEntries: [],
+          encounterMap: new Map<string, number | null>(),
         };
 
         if (player.profession && !existing.player.professions.includes(player.profession)) {
@@ -748,20 +805,26 @@ function aggregatePlayers(runs: RunRecord[]) {
         }
 
         existing.dpsValues.push(dps);
-        existing.encounterValues.set(shortEncounterName(run.bossName), [...(existing.encounterValues.get(shortEncounterName(run.bossName)) ?? []), dps]);
+        const encounterEntry = existing.encounterValues.get(run.encounterKey) ?? {
+          encounter: shortEncounterName(run.bossName),
+          values: [],
+        };
+        encounterEntry.values.push(dps);
+        existing.encounterValues.set(run.encounterKey, encounterEntry);
         byPlayer.set(key, existing);
       });
     });
 
   for (const [key, value] of byPlayer.entries()) {
     const encounterEntries = Array.from(value.encounterValues.entries())
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([encounter, values]) => ({ encounter, dps: average(values) }));
+      .map(([encounterKey, entry]) => ({ encounterKey, encounter: entry.encounter, dps: average(entry.values) }))
+      .sort((left, right) => left.encounter.localeCompare(right.encounter));
 
     byPlayer.set(key, {
       ...value,
       averageTargetDps: average(value.dpsValues),
       encounterEntries,
+      encounterMap: new Map(encounterEntries.map((entry) => [entry.encounterKey, entry.dps])),
     });
   }
 
@@ -806,21 +869,37 @@ function formatEncounterBest(encounter: EncounterSummary | null): string {
   return duration == null ? "N/A" : formatSeconds(duration);
 }
 
-function renderPlayerEncounterBreakdown(player: PlayerAggregate | null) {
-  if (!player?.encounterEntries.length) {
-    return <span className="muted">N/A</span>;
-  }
-
+function renderPlayerComparisonCell(current: number | null, previous: number | null) {
   return (
-    <div className="grid gap-[0.35rem]">
-      {player.encounterEntries.map((entry) => (
-        <div className="flex items-baseline justify-between gap-3 rounded-[0.55rem] border border-base-200 bg-base-200 px-[0.6rem] py-[0.45rem]" key={entry.encounter}>
-          <span className="text-muted">{entry.encounter}</span>
-          <strong className="whitespace-nowrap">{formatDps(entry.dps)}</strong>
-        </div>
-      ))}
+    <div className="grid gap-[0.1rem] leading-tight">
+      <strong className="whitespace-nowrap text-[0.92rem]">{formatDps(current)}</strong>
+      <small className={cx("text-[0.78rem] font-black", getPlayerDeltaClass(current, previous))}>{formatPlayerDpsDelta(current, previous)}</small>
+      <small className="whitespace-nowrap text-[0.78rem] text-muted">{formatDps(previous)}</small>
     </div>
   );
+}
+
+function formatPlayerDpsDelta(current: number | null, previous: number | null): string {
+  if (current == null && previous == null) return "N/A";
+  if (current == null) return "No current";
+  if (previous == null) return "No previous";
+  if (!Number.isFinite(current) || !Number.isFinite(previous)) return "N/A";
+
+  const delta = current - previous;
+  if (Math.abs(delta) < 0.5) return "same";
+  if (Math.abs(previous) < 0.5) return `${delta > 0 ? "+" : ""}${formatDps(delta)}`;
+
+  return `${delta > 0 ? "+" : ""}${((delta / previous) * 100).toFixed(1)}%`;
+}
+
+function getPlayerDeltaClass(current: number | null, previous: number | null): string {
+  if (current == null || previous == null || !Number.isFinite(current) || !Number.isFinite(previous)) {
+    return "text-muted";
+  }
+
+  const delta = current - previous;
+  if (Math.abs(delta) < 0.5) return "text-muted";
+  return delta > 0 ? "text-[color:var(--color-success)]" : "text-[color:var(--color-danger)]";
 }
 
 function shortEncounterName(name: string): string {

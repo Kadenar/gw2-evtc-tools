@@ -36,7 +36,7 @@ import {
 const HISTORY_VIEWS: Array<{ id: HistoryView; label: string; group: "Primary" | "Analysis" }> = [
   { id: "dashboard", label: "Dashboard", group: "Primary" },
   { id: "runs", label: "Runs", group: "Primary" },
-  { id: "weeks", label: "Weeks", group: "Primary" },
+  { id: "weeks", label: "Compare weeks", group: "Primary" },
   { id: "wings", label: "Wings", group: "Analysis" },
   { id: "encounters", label: "Encounters", group: "Analysis" },
   { id: "downtime", label: "Downtime", group: "Analysis" },
