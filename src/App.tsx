@@ -86,9 +86,12 @@ export default function App() {
 
 function ThemeToggle() {
   return (
-    <label className="btn btn-ghost btn-circle swap swap-rotate" aria-label="Toggle light/dark theme">
+    <label
+      className="btn btn-ghost btn-circle swap swap-rotate inline-grid shrink-0 place-items-center border-0 shadow-none outline-none ring-0 focus-visible:border-0 focus-visible:ring-0"
+      aria-label="Toggle light/dark theme"
+    >
       {/* theme-change flips data-theme on <html> and persists the choice. */}
-      <input type="checkbox" data-toggle-theme="dark,light" data-act-class="ACTIVE" />
+      <input type="checkbox" data-toggle-theme="dark,light" />
       <svg className="swap-off h-5 w-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
         <path d="M5.64 17l-.71.71a1 1 0 0 0 1.41 1.41l.71-.71A1 1 0 0 0 5.64 17zM5 12a1 1 0 0 0-1-1H3a1 1 0 0 0 0 2h1a1 1 0 0 0 1-1zm7-7a1 1 0 0 0 1-1V3a1 1 0 0 0-2 0v1a1 1 0 0 0 1 1zM5.64 7.05a1 1 0 0 0 .7.29 1 1 0 0 0 .71-.29 1 1 0 0 0 0-1.41l-.71-.71a1 1 0 0 0-1.41 1.41zM17 5.64a1 1 0 0 0 .7-.29l.71-.71a1 1 0 1 0-1.41-1.41l-.71.71A1 1 0 0 0 17 5.64zM21 11h-1a1 1 0 0 0 0 2h1a1 1 0 0 0 0-2zm-2.36 6a1 1 0 0 0-1.41 1.41l.71.71a1 1 0 0 0 1.41-1.41zM12 6.5A5.5 5.5 0 1 0 17.5 12 5.51 5.51 0 0 0 12 6.5zm0 9A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5zm0 3.5a1 1 0 0 0-1 1v1a1 1 0 0 0 2 0v-1a1 1 0 0 0-1-1z" />
       </svg>

@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { getEncounterSortOrder } from "../../data/encounters";
 import { formatSeconds } from "../../lib/format";
-import { cx, panelClass, sectionHeadingClass, tableWrapClass } from "../../lib/ui";
+import { cx, panelClass, sectionHeadingClass, summaryCardClass, tableWrapClass } from "../../lib/ui";
 import { EmptyCard } from "../ui/empty-card";
 import { hasCurrentPhaseData, type RunRecord } from "../../lib/runHistory";
+import { Button } from "../ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import type { EncounterSummary, HistoryFilterActions, HistoryFilters } from "./types";
 import { average, formatDps, formatPercent, formatPullTickDate, formatResult, formatRunDate, formatWing, getResultClass } from "./utils";
 import { HistoryFilterPanel } from "./shared";
@@ -70,6 +73,22 @@ function EncounterListPanel({
   onSelectEncounter: (encounterKey: string) => void;
 }) {
   const encounterGroups = buildEncounterGroups(encounters);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [lastAutoOpenedEncounterKey, setLastAutoOpenedEncounterKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedEncounterKey) return;
+    if (selectedEncounterKey === lastAutoOpenedEncounterKey) return;
+
+    const selectedGroup = encounterGroups.find((group) =>
+      group.encounters.some((encounter) => encounter.encounterKey === selectedEncounterKey)
+    );
+
+    if (!selectedGroup) return;
+
+    setOpenGroups((current) => ({ ...current, [selectedGroup.key]: true }));
+    setLastAutoOpenedEncounterKey(selectedEncounterKey);
+  }, [encounterGroups, lastAutoOpenedEncounterKey, selectedEncounterKey]);
 
   return (
     <div className={panelClass}>
@@ -81,60 +100,93 @@ function EncounterListPanel({
       {encounterGroups.length ? (
         <div className="grid gap-[0.45rem]">
         {encounterGroups.map((group) => (
-          <section className="grid gap-[0.6rem]" key={group.label}>
-            <div className="flex items-center justify-between gap-3">
-              <h5 className="m-0 text-[0.9rem]">{group.label}</h5>
-              <span className="badge badge-outline">
-                {group.encounters.length} encounter{group.encounters.length === 1 ? "" : "s"}
-              </span>
-            </div>
-            <div className={tableWrapClass}>
-              <table className="table-fixed">
-                <colgroup>
-                  <col className="w-auto" />
-                  <col className="w-30" />
-                  <col className="w-30" />
-                  <col className="w-22" />
-                  <col className="w-32" />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th>Encounter</th>
-                    <th>Latest</th>
-                    <th>Best</th>
-                    <th>Wipes</th>
-                    <th>Kill rate</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {group.encounters.map((encounter) => {
-                    const latest = [...encounter.runsList].sort((a, b) => b.start - a.start)[0];
-                    return (
-                      <tr
-                        className={cx(
-                          "cursor-pointer hover:bg-primary/8",
-                          selectedEncounterKey === encounter.encounterKey && "bg-primary/8",
-                        )}
-                        onClick={() => onSelectEncounter(encounter.encounterKey)}
-                        key={encounter.encounterKey}
-                      >
-                        <td>
-                          <span className="inline-flex min-w-0 flex-wrap items-center gap-[0.4rem]">
-                            <span>{encounter.bossName}</span>
-                            {encounter.isCm ? <span className="badge badge-sm badge-outline">CM</span> : null}
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap text-right [font-variant-numeric:tabular-nums]">{latest ? formatSeconds(latest.duration) : "N/A"}</td>
-                        <td className="whitespace-nowrap text-right [font-variant-numeric:tabular-nums]">{encounter.bestDuration == null ? "N/A" : formatSeconds(encounter.bestDuration)}</td>
-                        <td className="whitespace-nowrap text-right [font-variant-numeric:tabular-nums]">{encounter.wipes}</td>
-                        <td className="whitespace-nowrap text-right [font-variant-numeric:tabular-nums]">{formatPercent(encounter.killRate)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <Collapsible
+            className="grid gap-[0.6rem]"
+            key={group.key}
+            open={openGroups[group.key] ?? false}
+            onOpenChange={(open) =>
+              setOpenGroups((current) => ({ ...current, [group.key]: open }))
+            }
+          >
+            <section className={cx(summaryCardClass, "gap-[0.75rem] p-[0.9rem]")}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <h5 className="m-0 text-[0.98rem]">{group.label}</h5>
+                  <span className="badge badge-outline">
+                    {group.encounters.length} encounter{group.encounters.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="justify-between gap-2 px-2 text-[0.82rem] font-black uppercase tracking-[0.04em] text-muted"
+                  >
+                    <span>{openGroups[group.key] ? "Hide" : "Show"}</span>
+                    <ChevronDown
+                      className={cx(
+                        "size-4 transition-transform duration-200",
+                        openGroups[group.key] && "rotate-180"
+                      )}
+                    />
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+              <CollapsibleContent className="grid gap-[0.55rem]">
+                {group.encounters.map((encounter) => {
+                  const latest = [...encounter.runsList].sort((a, b) => b.start - a.start)[0];
+                  const isSelected = selectedEncounterKey === encounter.encounterKey;
+
+                  return (
+                    <button
+                      type="button"
+                      className={cx(
+                        "grid w-full items-center gap-3 rounded-xl border border-line bg-base-100 px-[0.8rem] py-[0.8rem] text-left text-fg transition-colors hover:border-primary/45 hover:bg-primary/5 max-nav:grid-cols-1 [grid-template-columns:minmax(0,1.5fr)_repeat(4,minmax(72px,auto))]",
+                        isSelected && "border-primary/55 bg-primary/8",
+                      )}
+                      onClick={() => onSelectEncounter(encounter.encounterKey)}
+                      key={encounter.encounterKey}
+                    >
+                      <div className="grid min-w-0 gap-[0.2rem]">
+                        <span className="inline-flex min-w-0 flex-wrap items-center gap-[0.4rem]">
+                          <strong className="truncate">{encounter.bossName}</strong>
+                          {encounter.isCm ? <span className="badge badge-sm badge-outline">CM</span> : null}
+                        </span>
+                        <span className="text-[0.8rem] text-muted">
+                          {encounter.runs} run{encounter.runs === 1 ? "" : "s"}
+                        </span>
+                      </div>
+                      <div className="grid gap-[0.15rem]">
+                        <span className="text-[0.72rem] font-black uppercase tracking-[0.06em] text-muted">Latest</span>
+                        <strong className="whitespace-nowrap [font-variant-numeric:tabular-nums]">
+                          {latest ? formatSeconds(latest.duration) : "N/A"}
+                        </strong>
+                      </div>
+                      <div className="grid gap-[0.15rem]">
+                        <span className="text-[0.72rem] font-black uppercase tracking-[0.06em] text-muted">Best</span>
+                        <strong className="whitespace-nowrap [font-variant-numeric:tabular-nums]">
+                          {encounter.bestDuration == null ? "N/A" : formatSeconds(encounter.bestDuration)}
+                        </strong>
+                      </div>
+                      <div className="grid gap-[0.15rem]">
+                        <span className="text-[0.72rem] font-black uppercase tracking-[0.06em] text-muted">Wipes</span>
+                        <strong className="whitespace-nowrap [font-variant-numeric:tabular-nums]">
+                          {encounter.wipes}
+                        </strong>
+                      </div>
+                      <div className="grid gap-[0.15rem]">
+                        <span className="text-[0.72rem] font-black uppercase tracking-[0.06em] text-muted">Kill rate</span>
+                        <strong className="whitespace-nowrap [font-variant-numeric:tabular-nums]">
+                          {formatPercent(encounter.killRate)}
+                        </strong>
+                      </div>
+                    </button>
+                  );
+                })}
+              </CollapsibleContent>
+            </section>
+          </Collapsible>
         ))}
         </div>
       ) : (
@@ -144,7 +196,7 @@ function EncounterListPanel({
   );
 }
 
-function buildEncounterGroups(encounters: EncounterSummary[]): Array<{ label: string; encounters: EncounterSummary[] }> {
+function buildEncounterGroups(encounters: EncounterSummary[]): Array<{ key: string; label: string; encounters: EncounterSummary[] }> {
   const byWing = new Map<number | null, EncounterSummary[]>();
 
   for (const encounter of encounters) {
@@ -154,6 +206,7 @@ function buildEncounterGroups(encounters: EncounterSummary[]): Array<{ label: st
   return Array.from(byWing.entries())
     .sort(([leftWing], [rightWing]) => (leftWing ?? Number.POSITIVE_INFINITY) - (rightWing ?? Number.POSITIVE_INFINITY))
     .map(([wing, wingEncounters]) => ({
+      key: wing == null ? "wing:unknown" : `wing:${wing}`,
       label: formatWing(wing),
       encounters: [...wingEncounters].sort(compareEncountersByWingOrder),
     }));
@@ -284,12 +337,7 @@ function EncounterDetail({
           <div className="flex min-h-22.5 w-max min-w-full items-end gap-[0.35rem]" aria-label={`${encounter.bossName} pull duration history. Older pulls are on the left and newer pulls are on the right.`}>
             {runs.map((run) => (
               <a
-                className={cx(
-                  "flex h-17 items-end justify-center rounded-full",
-                  getResultClass(run.success) === "kill" && "bg-success/10",
-                  getResultClass(run.success) === "wipe" && "bg-error/10",
-                  getResultClass(run.success) === "unknown" && "bg-info/10",
-                )}
+                className="flex h-17 items-end justify-center rounded-xl"
                 href={run.permalink}
                 target="_blank"
                 rel="noreferrer"
@@ -319,25 +367,30 @@ function EncounterDetail({
         </div>
       </div>
 
-      <div>
+      <Collapsible open={isRunListExpanded} onOpenChange={setIsRunListExpanded}>
+        <div className={cx(sectionHeadingClass, "items-center")}>
           <div>
             <h4 className="mb-[0.2rem] mt-0">Saved logs</h4>
           </div>
-        <button
-          type="button"
-          className={cx(sectionHeadingClass, "w-full border-0 bg-transparent p-0 text-left text-fg")}
-          onClick={() => setIsRunListExpanded((current) => !current)}
-          aria-expanded={isRunListExpanded}
-        >
-          
-          <span className="inline-flex items-center gap-[0.4rem] text-[0.82rem] font-black uppercase text-muted tracking-[0.04em]" aria-hidden="true">
-            <span>{isRunListExpanded ? "Hide logs" : "View logs"}</span>
-            <span className={cx("inline-block transition-transform duration-150", isRunListExpanded && "rotate-180")}>v</span>
-          </span>
-        </button>
+          <CollapsibleTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="justify-between gap-2 px-2 text-[0.82rem] font-black uppercase tracking-[0.04em] text-muted"
+            >
+              <span>{isRunListExpanded ? "Hide logs" : "View logs"}</span>
+              <ChevronDown
+                className={cx(
+                  "size-4 transition-transform duration-200",
+                  isRunListExpanded && "rotate-180"
+                )}
+              />
+            </Button>
+          </CollapsibleTrigger>
+        </div>
 
-        {isRunListExpanded ? (
-          <div className="grid gap-[0.45rem]">
+        <CollapsibleContent className="grid gap-[0.45rem] pt-[0.45rem]">
             <div className="grid gap-3 px-[0.8rem] pb-[0.15rem] pt-0 text-[0.78rem] font-black uppercase text-muted tracking-[0.08em] max-nav:hidden grid-cols-[minmax(180px,1fr)_90px_90px_140px]" aria-hidden="true">
               <span>Date</span>
               <span>Result</span>
@@ -363,9 +416,8 @@ function EncounterDetail({
                   <span>{formatDps(run.compDps)}</span>
                 </button>
               ))}
-          </div>
-        ) : null}
-      </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

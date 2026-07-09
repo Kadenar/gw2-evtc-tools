@@ -15,7 +15,7 @@ import {
 import { downloadBlob } from "../lib/format";
 import { formatDateTime, formatSeconds } from "../lib/format";
 import { RunSessionType, saveSessionLogs } from "../lib/runHistory";
-import { compactFieldClass, cx, fieldClass, inlineActionsClass, panelClass, sectionHeadingClass, splitPanelClass } from "../lib/ui";
+import { compactFieldClass, cx, fieldClass, inlineActionsClass, panelClass, sectionHeadingClass } from "../lib/ui";
 
 type BreakdownView = "timeline" | "details";
 
@@ -160,9 +160,26 @@ export function SessionTimer() {
 
   return (
     <section className="grid gap-4">
-      <div className={cx(panelClass, splitPanelClass)}>
+      <div className={cx(panelClass, "grid items-start gap-4 [grid-template-columns:minmax(0,1fr)_minmax(320px,0.75fr)] max-nav:grid-cols-1")}>
         <div>
           <h3 className="mb-3 mt-0 text-[1.25rem]">Use existing dps.report links</h3>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="m-0 text-[1.25rem]">Or upload logs</h3>
+          <label className="flex min-w-0 items-center gap-3 text-sm text-muted">
+            <span className="whitespace-nowrap">Upload domain</span>
+            <AppSelect
+              value={uploadDomain}
+              onValueChange={(value) => setUploadDomain(value as DpsReportDomain)}
+              options={UPLOAD_DOMAIN_OPTIONS}
+              size="sm"
+              triggerClassName="min-w-52"
+            />
+          </label>
+        </div>
+
+        <div className="grid content-start">
           <textarea
             className="min-h-30"
             value={linksText}
@@ -188,12 +205,7 @@ export function SessionTimer() {
           )}
         </div>
 
-        <div>
-          <h3 className="mb-3 mt-0 text-[1.25rem]">Or upload logs</h3>
-          <label className={cx(fieldClass, "mx-0 mt-0 mb-3 max-w-60")}>
-            <span className="text-muted">Upload domain</span>
-            <AppSelect value={uploadDomain} onValueChange={(value) => setUploadDomain(value as DpsReportDomain)} options={UPLOAD_DOMAIN_OPTIONS} />
-          </label>
+        <div className="grid content-start">
           <FileDropzone
             className="min-h-35"
             title="Choose EVTC/ZEVTC logs"
