@@ -44,17 +44,15 @@ export function PlayersTab({
     [metricRuns],
   );
 
-  useEffect(() => {
-    if (!metricWingOptions.length) {
-      setSelectedWingValue("none");
-      return;
-    }
-
-    setSelectedWingValue((current) => {
-      if (current !== "none" && metricWingOptions.includes(Number(current))) return current;
-      return String(metricWingOptions[0]);
-    });
-  }, [metricWingOptions]);
+  // Snap the wing selection to a valid option when the option set changes.
+  // Guarded adjust-during-render (converges) instead of a post-paint effect,
+  // which avoids an extra render pass.
+  const wantedWingValue = !metricWingOptions.length
+    ? "none"
+    : selectedWingValue !== "none" && metricWingOptions.includes(Number(selectedWingValue))
+      ? selectedWingValue
+      : String(metricWingOptions[0]);
+  if (wantedWingValue !== selectedWingValue) setSelectedWingValue(wantedWingValue);
 
   const selectedWing = selectedWingValue === "none" ? null : Number(selectedWingValue);
   const selectedWingRuns = useMemo(

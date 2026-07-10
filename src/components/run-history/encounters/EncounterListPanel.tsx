@@ -1,5 +1,5 @@
 import { ChevronDown } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { formatSeconds } from "../../../lib/format";
 import { cx, panelClass, sectionHeadingClass, summaryCardClass } from "../../../lib/ui";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
@@ -22,20 +22,18 @@ export function EncounterListPanel({
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [lastAutoOpenedEncounterKey, setLastAutoOpenedEncounterKey] = useState<string | null>(null);
 
-  // Auto-expand group when encounter is selected
-  useEffect(() => {
-    if (!selectedEncounterKey) return;
-    if (selectedEncounterKey === lastAutoOpenedEncounterKey) return;
-
+  // Auto-expand the group of the selected encounter. Done during render (React
+  // supports conditional setState while rendering); the guard converges so it
+  // runs once per selection change instead of via a post-paint effect.
+  if (selectedEncounterKey && selectedEncounterKey !== lastAutoOpenedEncounterKey) {
     const selectedGroup = encounterGroups.find((group) =>
       group.encounters.some((encounter) => encounter.encounterKey === selectedEncounterKey)
     );
-
-    if (!selectedGroup) return;
-
-    setOpenGroups((current) => ({ ...current, [selectedGroup.key]: true }));
-    setLastAutoOpenedEncounterKey(selectedEncounterKey);
-  }, [encounterGroups, lastAutoOpenedEncounterKey, selectedEncounterKey]);
+    if (selectedGroup) {
+      setOpenGroups((current) => ({ ...current, [selectedGroup.key]: true }));
+      setLastAutoOpenedEncounterKey(selectedEncounterKey);
+    }
+  }
 
   return (
     <div className={panelClass}>

@@ -42,7 +42,7 @@ export function EncounterDetail({
       <EncounterDurationChart runs={runs} bossName={encounter.bossName} />
 
       {/* Saved log entries */}
-      <EncounterRunList runs={runs} resetKey={encounter.encounterKey} onSelectRun={onSelectRun} />
+      <EncounterRunList key={encounter.encounterKey} runs={runs} onSelectRun={onSelectRun} />
     </div>
   );
 }

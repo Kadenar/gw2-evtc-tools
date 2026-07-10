@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { formatSeconds } from "../../../lib/format";
 import type { RunRecord } from "../../../lib/runHistory";
 import { cx, sectionHeadingClass } from "../../../lib/ui";
@@ -6,21 +6,16 @@ import { Collapsible, CollapsibleContent } from "../../ui/collapsible";
 import { CollapsibleChevronTrigger } from "../shared";
 import { formatDps, formatResult, formatRunDate } from "../utils";
 
+// Collapse state resets when the encounter changes via a `key` on this
+// component at the call site (EncounterDetail) — a remount, not an effect.
 export function EncounterRunList({
   runs,
-  resetKey,
   onSelectRun,
 }: {
   runs: RunRecord[];
-  resetKey: string;
   onSelectRun: (run: RunRecord) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
-
-  // Collapse when encounter changes
-  useEffect(() => {
-    setIsExpanded(false);
-  }, [resetKey]);
 
   return (
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
