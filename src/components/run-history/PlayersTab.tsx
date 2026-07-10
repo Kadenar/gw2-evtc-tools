@@ -85,7 +85,7 @@ export function PlayersTab({
   useEffect(() => {
     if (!selectedWingRuns.length) return;
     onEnsureRunPhaseData(selectedWingRuns);
-  }, [selectedWingRuns]);
+  }, [onEnsureRunPhaseData, selectedWingRuns]);
 
   return (
     <>
