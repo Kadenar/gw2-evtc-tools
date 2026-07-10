@@ -40,9 +40,15 @@ export function extractEvtc(bytes: Uint8Array): ExtractedEvtc {
     return { originalBytes: bytes, evtcBytes: bytes, kind: "raw" };
   }
 
+  let zipEntries: Record<string, Uint8Array> | null = null;
   try {
-    const entries = unzipSync(bytes);
-    const evtc = pickZipEvtc(entries);
+    zipEntries = unzipSync(bytes);
+  } catch {
+    // Not a zip archive; fall through to generic compressed stream handling.
+  }
+
+  if (zipEntries) {
+    const evtc = pickZipEvtc(zipEntries);
     if (!evtc) {
       throw new Error("The archive did not contain an .evtc file.");
     }
@@ -52,8 +58,6 @@ export function extractEvtc(bytes: Uint8Array): ExtractedEvtc {
       kind: "zip",
       innerFilename: evtc.name,
     };
-  } catch {
-    // Fall through to generic compressed stream handling.
   }
 
   try {

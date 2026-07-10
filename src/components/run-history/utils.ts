@@ -1,5 +1,5 @@
-import { ENCOUNTER_BY_ID, RAID_ENCOUNTERS } from "../../data/encounters";
-import { formatSeconds } from "../../lib/format";
+import { ENCOUNTER_BY_ID, RAID_ENCOUNTERS, getEncounterSortOrder } from "../../data/encounters";
+import { average, formatDateTime, formatRunSessionType, formatSeconds } from "../../lib/format";
 import type { RunRecord, RunSessionType, WeekSummary } from "../../lib/runHistory";
 import { summarizeRunsByWeek } from "../../lib/runHistory";
 import type { CmFilter, EncounterSummary, ResultFilter, RunStats, SessionTypeFilter, SortMode, RaidNightSummary, WingHistorySummary } from "./types";
@@ -33,6 +33,8 @@ type WingDefinition = { code: string; label: string };
 const WING_DEFINITIONS = buildWingDefinitions();
 const ENCOUNTER_CODE_BY_NAME = buildEncounterCodeByName();
 
+// Assumes one session per (session type, calendar day) — see README "session grouping and limitations".
+// Don't add gap-splitting; two same-type sessions on one day merging is a documented trade-off, not a bug.
 export function buildRaidNightSummaries(runs: RunRecord[]): RaidNightSummary[] {
   const byNight = new Map<string, RunRecord[]>();
 
@@ -114,10 +116,20 @@ export function buildWingHistorySummaries(runs: RunRecord[]): WingHistorySummary
     .sort((a, b) => a.wing - b.wing);
 }
 
+type WingTimingSplit = { current: number | null; previous: number | null };
+
 export function buildWeekWingRows(
   currentRuns: RunRecord[],
   previousRuns: RunRecord[],
-): Array<{ wing: number; current: number | null; previous: number | null; change: string; note: string }> {
+): Array<{
+  wing: number;
+  current: number | null;
+  previous: number | null;
+  change: string;
+  combat: WingTimingSplit;
+  downtime: WingTimingSplit;
+  coverageNote: string | null;
+}> {
   const currentByWing = summarizeWeekByWing(currentRuns);
   const previousByWing = summarizeWeekByWing(previousRuns);
   const wings = Array.from(new Set([...currentByWing.keys(), ...previousByWing.keys()])).sort((a, b) => a - b);
@@ -125,6 +137,8 @@ export function buildWeekWingRows(
   return wings.map((wing) => {
     const currentTiming = currentByWing.get(wing) ?? null;
     const previousTiming = previousByWing.get(wing) ?? null;
+    const combat: WingTimingSplit = { current: currentTiming?.combatTime ?? null, previous: previousTiming?.combatTime ?? null };
+    const downtime: WingTimingSplit = { current: currentTiming?.downtime ?? null, previous: previousTiming?.downtime ?? null };
 
     if (!currentTiming || !previousTiming) {
       return {
@@ -132,7 +146,9 @@ export function buildWeekWingRows(
         current: currentTiming?.totalTime ?? null,
         previous: previousTiming?.totalTime ?? null,
         change: "Needs both weeks",
-        note: currentTiming ? `Only this week: ${currentTiming.coverageLabel}` : previousTiming ? `Only last week: ${previousTiming.coverageLabel}` : "Needs both weeks",
+        combat,
+        downtime,
+        coverageNote: currentTiming ? `Only this week: ${currentTiming.coverageLabel}` : previousTiming ? `Only last week: ${previousTiming.coverageLabel}` : "Needs both weeks",
       };
     }
 
@@ -142,7 +158,9 @@ export function buildWeekWingRows(
         current: currentTiming.totalTime,
         previous: previousTiming.totalTime,
         change: "Coverage mismatch",
-        note: `Coverage changed: this week ${currentTiming.coverageLabel}, last week ${previousTiming.coverageLabel}`,
+        combat,
+        downtime,
+        coverageNote: `Coverage changed: this week ${currentTiming.coverageLabel}, last week ${previousTiming.coverageLabel}`,
       };
     }
 
@@ -151,7 +169,9 @@ export function buildWeekWingRows(
       current: currentTiming.totalTime,
       previous: previousTiming.totalTime,
       change: formatTimeDelta(currentTiming.totalTime, previousTiming.totalTime),
-      note: describeWingTimingDelta(wing, currentTiming, previousTiming),
+      combat,
+      downtime,
+      coverageNote: currentTiming.isComparable ? null : `${currentTiming.coverageLabel}`,
     };
   });
 }
@@ -259,27 +279,6 @@ function formatCoverageLabel(wing: number, encounterCodes: string[]): string {
   return `${labels.length}/${Math.max(definitions.length, labels.length)} bosses: ${labels.join(", ")}`;
 }
 
-function describeWingTimingDelta(wing: number, current: WingWeekTimingSummary, previous: WingWeekTimingSummary): string {
-  const coveragePrefix = current.isComparable ? "" : `${current.coverageLabel}. `;
-  const combatDelta = current.combatTime - previous.combatTime;
-  const downtimeDelta = current.downtime - previous.downtime;
-  const parts: string[] = [];
-
-  if (Math.abs(combatDelta) >= 1) {
-    parts.push(combatDelta < 0 ? `combat ${formatSeconds(Math.abs(combatDelta))} faster` : `combat ${formatSeconds(Math.abs(combatDelta))} slower`);
-  }
-
-  if (Math.abs(downtimeDelta) >= 1) {
-    parts.push(downtimeDelta < 0 ? `${formatSeconds(Math.abs(downtimeDelta))} less downtime` : `${formatSeconds(Math.abs(downtimeDelta))} more downtime`);
-  }
-
-  if (!parts.length) {
-    return `${coveragePrefix}Stable`;
-  }
-
-  return `${coveragePrefix}${capitalize(parts[0])}${parts[1] ? ` and ${parts[1]}` : ""}`;
-}
-
 function buildWingDefinitions(): Map<number, WingDefinition[]> {
   const byWing = new Map<number, WingDefinition[]>();
 
@@ -328,10 +327,6 @@ function sortEncounterCodesForWing(wing: number, encounterCodes: string[]): stri
     const rightIndex = order.indexOf(right);
     return (leftIndex === -1 ? Number.POSITIVE_INFINITY : leftIndex) - (rightIndex === -1 ? Number.POSITIVE_INFINITY : rightIndex) || left.localeCompare(right);
   });
-}
-
-function capitalize(value: string): string {
-  return value ? `${value[0].toUpperCase()}${value.slice(1)}` : value;
 }
 
 export type TimelineRow =
@@ -560,17 +555,12 @@ export function maxBy<T>(items: T[], getValue: (item: T) => number): T | undefin
   return items.reduce<T | undefined>((best, item) => (best == null || getValue(item) > getValue(best) ? item : best), undefined);
 }
 
-export function average(values: number[]): number | null {
-  if (!values.length) return null;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
+// Canonical formatters shared with the Timer tool live in lib/format; re-exported here so
+// run-history modules can keep importing them from a single place.
+export { average, formatRunSessionType, formatWing, getResultClass, pluralize } from "../../lib/format";
 
 export function getRunSessionType(run: RunRecord): RunSessionType {
   return run.sessionType ?? "full-clear";
-}
-
-export function formatRunSessionType(sessionType: RunSessionType): string {
-  return sessionType === "full-clear" ? "Full clear" : "Practice";
 }
 
 export function formatSessionScopeLabel(sessionType: SessionTypeFilter): string {
@@ -581,11 +571,6 @@ export function formatSessionScopeLabel(sessionType: SessionTypeFilter): string 
 export function formatResult(success: boolean | null): string {
   if (success == null) return "N/A";
   return success ? "Success" : "Fail";
-}
-
-export function getResultClass(success: boolean | null): string {
-  if (success == null) return "unknown";
-  return success ? "kill" : "wipe";
 }
 
 /** daisyUI badge tone for a run result. */
@@ -599,13 +584,16 @@ export function formatPercent(value: number | null): string {
   return `${Math.round(value * 100)}%`;
 }
 
+// Intl.* constructors are relatively expensive; build each formatter once and reuse.
+const dpsNumberFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+const monthDayYearFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
+const runDateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+const clockFormat = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+const shortDateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+
 export function formatDps(value: number | null): string {
   if (value == null) return "N/A";
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
-}
-
-export function formatWing(wing: number | null): string {
-  return wing == null ? "Unmapped" : `Wing ${wing}`;
+  return dpsNumberFormat.format(value);
 }
 
 export function formatWingSet(wings: number[]): string {
@@ -636,59 +624,87 @@ function getNightKey(run: RunRecord): string {
 }
 
 function formatNightLabel(key: string): string {
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${key}T12:00:00`));
+  return monthDayYearFormat.format(new Date(`${key}T12:00:00`));
 }
 
 function formatShortNightLabel(key: string): string {
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(`${key}T12:00:00`));
+  return formatShortDate(new Date(`${key}T12:00:00`));
 }
 
 export function formatRunDate(run: RunRecord): string {
-  const date = new Date(getRunStart(run) * 1000);
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
+  return runDateFormat.format(new Date(getRunStart(run) * 1000));
 }
 
 export function formatPullTickDate(run: RunRecord): string {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(getRunStart(run) * 1000));
+  return formatDateTime(getRunStart(run));
 }
 
 export function formatCalendarDate(unixSeconds: number): string {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(unixSeconds * 1000));
+  return monthDayYearFormat.format(new Date(unixSeconds * 1000));
 }
 
 export function formatClock(unixSeconds: number): string {
-  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(unixSeconds * 1000));
+  return clockFormat.format(new Date(unixSeconds * 1000));
+}
+
+/** Shared guard: returns current - previous, or null when either side is missing/non-finite. */
+function finiteDelta(current: number | null | undefined, previous: number | null | undefined): number | null {
+  if (current == null || previous == null || !Number.isFinite(current) || !Number.isFinite(previous)) return null;
+  return current - previous;
 }
 
 export function formatTimeDelta(current: number | null | undefined, previous: number | null | undefined): string {
-  if (current == null || previous == null || !Number.isFinite(current) || !Number.isFinite(previous)) return "No previous";
-  const delta = current - previous;
+  const delta = finiteDelta(current, previous);
+  if (delta == null) return "No previous";
   if (Math.abs(delta) < 1) return "same";
   return `${formatSeconds(Math.abs(delta))} ${delta < 0 ? "faster" : "slower"}`;
 }
 
 export function formatCountDelta(current: number, previous: number | null | undefined, betterWord: string): string {
-  if (previous == null || !Number.isFinite(previous)) return "No previous";
-  const delta = current - previous;
+  const delta = finiteDelta(current, previous);
+  if (delta == null) return "No previous";
   if (delta === 0) return "same";
   return `${Math.abs(delta)} ${delta < 0 ? betterWord : "more"}`;
 }
 
+/** Signed +/- delta of durations, e.g. "+ 1:23" / "- 0:45" / "same" / "N/A". */
+export function formatSignedSecondsDelta(current: number | null | undefined, previous: number | null | undefined): string {
+  const delta = finiteDelta(current, previous);
+  if (delta == null) return "N/A";
+  if (Math.abs(delta) < 1) return "same";
+  return `${delta < 0 ? "-" : "+"} ${formatSeconds(Math.abs(delta))}`;
+}
+
+/** Signed +/- delta of counts, e.g. "+ 2" / "- 1" / "same" / "N/A". */
+export function formatSignedCountDelta(current: number | null | undefined, previous: number | null | undefined): string {
+  const delta = finiteDelta(current, previous);
+  if (delta == null) return "N/A";
+  if (delta === 0) return "same";
+  return `${delta < 0 ? "-" : "+"} ${Math.abs(delta)}`;
+}
+
+/** Short "MMM d" date label used by chart axis ticks. */
+export function formatShortDate(date: Date): string {
+  return shortDateFormat.format(date);
+}
+
+/** Duration axis tick: "0:00" for empty/invalid, otherwise m:ss / h:mm:ss. */
+export function formatDurationTick(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
+  return formatSeconds(seconds);
+}
+
 function shortBossName(name: string): string {
   return name.replace(/^Bandit Trio - /, "Trio ").replace("Vale Guardian", "VG").replace("Gorseval", "Gorse");
+}
+
+export function shortEncounterName(name: string): string {
+  return name.replace(/^Bandit Trio - /, "Trio ").replace(/\s+CM$/, "");
+}
+
+export function compareEncounterSummaries(left: EncounterSummary, right: EncounterSummary): number {
+  return getEncounterSortOrder(left.runsList[0]?.bossId ?? null, left.bossName)
+    - getEncounterSortOrder(right.runsList[0]?.bossId ?? null, right.bossName)
+    || left.bossName.localeCompare(right.bossName)
+    || Number(left.isCm) - Number(right.isCm);
 }

@@ -2,6 +2,7 @@ import * as React from "react";
 import { FileUpIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { pluralize } from "@/lib/format";
 
 type FileDropzoneProps = {
   title: string;
@@ -122,7 +123,7 @@ export function FileDropzone({
               ))}
             </div>
           ) : null}
-          <small className="text-muted">{files.length ? `${files.length} file${files.length === 1 ? "" : "s"} selected` : hint}</small>
+          <small className="text-muted">{files.length ? `${files.length} ${pluralize(files.length, "file")} selected` : hint}</small>
         </div>
       </div>
     </div>

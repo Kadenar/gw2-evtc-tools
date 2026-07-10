@@ -147,7 +147,7 @@ export function TriggerRewriter() {
               </div>
             )}
 
-            <details className="my-4 rounded-2xl border border-line bg-black/[0.16] p-[0.85rem]">
+            <details className="my-4 rounded-2xl border border-line bg-black/16 p-[0.85rem]">
               <summary className="cursor-pointer font-extrabold">Advanced header details</summary>
               <label className={cx(fieldClass, compactFieldClass)}>
                 <span className="text-muted">Manual boss-id offset</span>
@@ -156,7 +156,7 @@ export function TriggerRewriter() {
                   min={0}
                   max={31}
                   value={manualOffset ?? suggestedOffset}
-                  onChange={(event) => setManualOffset(Number(event.target.value))}
+                  onChange={(event) => setManualOffset(event.target.value === "" ? null : Number(event.target.value))}
                 />
               </label>
               <label className="my-[0.8rem] flex items-center gap-[0.55rem] text-muted">

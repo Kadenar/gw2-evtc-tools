@@ -2,7 +2,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import { formatSeconds } from "../../lib/format";
 import { inlineActionsClass, overviewGridClass, panelClass, sectionHeadingClass, statGridClass } from "../../lib/ui";
 import type { RaidNightSummary, SessionTypeFilter, WingHistorySummary } from "./types";
-import { buildTimelineRows, formatRunSessionType, formatSessionScopeLabel, formatWingSet } from "./utils";
+import { buildTimelineRows, formatRunSessionType, formatSessionScopeLabel, formatSignedCountDelta, formatSignedSecondsDelta, formatWingSet, pluralize } from "./utils";
 import { StatCard } from "./shared";
 
 export function DashboardTab({
@@ -25,6 +25,10 @@ export function DashboardTab({
   const trendLabel = sessionTypeFilter === "practice" ? "Practice Time Trend" : sessionTypeFilter === "all" ? "Run Time Trend" : "Full Clear Time Trend";
   const breakdownLabel =
     sessionTypeFilter === "practice" ? "Current practice breakdown" : sessionTypeFilter === "all" ? "Current run breakdown" : "Current full clear breakdown";
+  const bestWing = wingSummaries.reduce<WingHistorySummary | null>(
+    (best, wing) => (wing.bestTime != null && (best?.bestTime == null || wing.bestTime < best.bestTime) ? wing : best),
+    null,
+  );
 
   return (
     <>
@@ -41,15 +45,15 @@ export function DashboardTab({
           <StatCard
             label={latestLabel}
             value={latestNight ? formatSeconds(latestNight.totalTime) : "N/A"}
-            detail={latestNight ? `${latestNight.shortLabel} - vs ${previousLabel} ${formatDelta(latestNight.totalTime, previousNight?.totalTime)}` : "No raid nights"}
+            detail={latestNight ? `${latestNight.shortLabel} - vs ${previousLabel} ${formatSignedSecondsDelta(latestNight.totalTime, previousNight?.totalTime)}` : "No raid nights"}
           />
           <StatCard
             label="Best Wing Split"
-            value={wingSummaries[0] ? `W${wingSummaries[0].wing}` : "N/A"}
-            detail={wingSummaries[0]?.bestTime == null ? "No wing data" : `${formatSeconds(wingSummaries[0].bestTime)} PB`}
+            value={bestWing ? `W${bestWing.wing}` : "N/A"}
+            detail={bestWing?.bestTime == null ? "No wing data" : `${formatSeconds(bestWing.bestTime)} PB`}
           />
-          <StatCard label="Downtime" value={latestNight ? formatSeconds(latestNight.downtime) : "N/A"} detail={formatDelta(latestNight?.downtime, previousNight?.downtime)} />
-          <StatCard label="Wipes" value={latestNight ? String(latestNight.wipes) : "N/A"} detail={formatCountDelta(latestNight?.wipes, previousNight?.wipes)} />
+          <StatCard label="Downtime" value={latestNight ? formatSeconds(latestNight.downtime) : "N/A"} detail={formatSignedSecondsDelta(latestNight?.downtime, previousNight?.downtime)} />
+          <StatCard label="Wipes" value={latestNight ? String(latestNight.wipes) : "N/A"} detail={formatSignedCountDelta(latestNight?.wipes, previousNight?.wipes)} />
         </div>
       </div>
 
@@ -90,7 +94,7 @@ function RecentRaidNights({ nights }: { nights: RaidNightSummary[] }) {
               {formatWingSet(night.wings)} {formatRunSessionType(night.sessionType)}
             </strong>
             <span className="text-muted">{formatSeconds(night.totalTime)}</span>
-            <span className="text-muted">{formatDelta(night.totalTime, nights[index + 1]?.totalTime)}</span>
+            <span className="text-muted">{formatSignedSecondsDelta(night.totalTime, nights[index + 1]?.totalTime)}</span>
             <span className="text-muted">{night.wipes}</span>
             <span className="text-muted">{formatSeconds(night.downtime)}</span>
           </div>
@@ -161,7 +165,7 @@ function TrendChart({ title, nights }: { title: string; nights: RaidNightSummary
       <div className={sectionHeadingClass}>
         <div>
           <h3 className="mb-3 mt-0 text-[1.25rem]">{title}</h3>
-          <p className="muted">Stacked combat and downtime over the latest {nights.length} saved raid night{nights.length === 1 ? "" : "s"}.</p>
+          <p className="muted">Stacked combat and downtime over the latest {nights.length} saved raid {pluralize(nights.length, "night")}.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-[0.82rem] text-muted">
           <span className="inline-flex items-center gap-2">
@@ -175,7 +179,7 @@ function TrendChart({ title, nights }: { title: string; nights: RaidNightSummary
         </div>
       </div>
       {chartRows.length ? (
-        <div className="h-[17rem] min-w-0">
+        <div className="h-68 min-w-0">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartRows} margin={{ top: 12, right: 10, bottom: 6, left: 0 }}>
               <defs>
@@ -262,12 +266,12 @@ function TrendTooltip({
   if (!active || !payload?.length || !row) return null;
 
   return (
-    <div className="grid min-w-[11.25rem] gap-[0.4rem] rounded-xl border border-line bg-panel px-3 py-2 shadow-lg">
+    <div className="grid min-w-45 gap-[0.4rem] rounded-xl border border-line bg-panel px-3 py-2 shadow-lg">
       <div className="grid gap-[0.1rem]">
         <strong>{row.fullLabel}</strong>
         <span className="text-[0.82rem] text-muted">{row.scope}</span>
       </div>
-      <div className="grid gap-[0.25rem] text-[0.88rem]">
+      <div className="grid gap-1 text-[0.88rem]">
         {payload.map((entry) => (
           <div className="flex items-center justify-between gap-3" key={String(entry.dataKey)}>
             <span className="inline-flex items-center gap-2 text-muted">
@@ -286,40 +290,12 @@ function TrendTooltip({
   );
 }
 
-function formatDeltaLegacy(current: number | null | undefined, previous: number | null | undefined): string {
-  if (current == null || previous == null || !Number.isFinite(current) || !Number.isFinite(previous)) return "—";
-  const delta = current - previous;
-  if (Math.abs(delta) < 1) return "same";
-  return `${delta < 0 ? "↓" : "↑"} ${formatSeconds(Math.abs(delta))}`;
-}
-
-function formatCountDeltaLegacy(current: number | null | undefined, previous: number | null | undefined): string {
-  if (current == null || previous == null || !Number.isFinite(current) || !Number.isFinite(previous)) return "—";
-  const delta = current - previous;
-  if (delta === 0) return "same";
-  return `${delta < 0 ? "↓" : "↑"} ${Math.abs(delta)}`;
-}
-
-function formatDelta(current: number | null | undefined, previous: number | null | undefined): string {
-  if (current == null || previous == null || !Number.isFinite(current) || !Number.isFinite(previous)) return "N/A";
-  const delta = current - previous;
-  if (Math.abs(delta) < 1) return "same";
-  return `${delta < 0 ? "-" : "+"} ${formatSeconds(Math.abs(delta))}`;
-}
-
-function formatCountDelta(current: number | null | undefined, previous: number | null | undefined): string {
-  if (current == null || previous == null || !Number.isFinite(current) || !Number.isFinite(previous)) return "N/A";
-  const delta = current - previous;
-  if (delta === 0) return "same";
-  return `${delta < 0 ? "-" : "+"} ${Math.abs(delta)}`;
-}
-
 function formatChartTime(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0m";
   const minutes = Math.round(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
-  return hours > 0 ? `${hours}:${String(remainder).padStart(2, "0")}` : `${minutes}:00`;
+  return hours > 0 ? `${hours}h ${remainder}m` : `${minutes}m`;
 }
 
 function getLongestDowntime(night: RaidNightSummary | null): number | null {

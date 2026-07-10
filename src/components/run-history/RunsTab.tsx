@@ -34,7 +34,7 @@ export function RunsTab({
         showSortFilter={false}
       />
 
-      <div className="grid gap-4 [grid-template-columns:minmax(220px,320px)_minmax(0,1fr)] max-nav:grid-cols-1">
+      <div className="grid gap-4 grid-cols-[minmax(220px,320px)_minmax(0,1fr)] max-nav:grid-cols-1">
         <div className={panelClass}>
           <div className={sectionHeadingClass}>
             <h3 className="mb-3 mt-0 text-[1.25rem]">Raid runs</h3>

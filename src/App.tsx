@@ -24,18 +24,50 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      <header className="navbar mx-auto w-[min(1720px,calc(100vw-2rem))] gap-2 px-0">
-        <div className="navbar-start">
-          <span className="text-xl font-black tracking-tight">GW2 Log Tools</span>
-        </div>
+      <div className="sticky top-0 z-50 bg-base-100 shadow-sm">
+        <header className="navbar mx-auto w-[min(1720px,calc(100vw-2rem))] gap-2 px-0">
+          <div className="navbar-start">
+            <span className="text-xl font-black tracking-tight">GW2 Log Tools</span>
+          </div>
 
-        <nav role="tablist" className="navbar-center join hidden md:inline-flex" aria-label="Tools">
+          <nav role="tablist" className="navbar-center join hidden md:inline-flex" aria-label="Tools">
+            {TABS.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                className={`btn join-item ${tool === id ? "btn-primary" : "btn-ghost"}`}
+                aria-selected={tool === id}
+                onClick={() => setTool(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="navbar-end gap-1">
+            <ThemeToggle />
+            <a
+              className="btn btn-ghost btn-circle"
+              href={REPO_URL}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="View source on GitHub"
+              title="View source on GitHub"
+            >
+              <GitHubIcon />
+            </a>
+          </div>
+        </header>
+
+        {/* Tabs collapse under the title on narrow screens. */}
+        <nav role="tablist" className="join mx-auto flex w-[min(1720px,calc(100vw-2rem))] pb-2 md:hidden" aria-label="Tools">
           {TABS.map(({ id, label }) => (
             <button
               key={id}
               type="button"
               role="tab"
-              className={`btn join-item ${tool === id ? "btn-primary" : "btn-ghost"}`}
+              className={`btn join-item flex-1 ${tool === id ? "btn-primary" : "btn-ghost"}`}
               aria-selected={tool === id}
               onClick={() => setTool(id)}
             >
@@ -43,39 +75,9 @@ export default function App() {
             </button>
           ))}
         </nav>
+      </div>
 
-        <div className="navbar-end gap-1">
-          <ThemeToggle />
-          <a
-            className="btn btn-ghost btn-circle"
-            href={REPO_URL}
-            target="_blank"
-            rel="noreferrer"
-            aria-label="View source on GitHub"
-            title="View source on GitHub"
-          >
-            <GitHubIcon />
-          </a>
-        </div>
-      </header>
-
-      {/* Tabs collapse under the title on narrow screens. */}
-      <nav role="tablist" className="join mx-auto mb-4 flex w-[min(1720px,calc(100vw-2rem))] md:hidden" aria-label="Tools">
-        {TABS.map(({ id, label }) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            className={`btn join-item flex-1 ${tool === id ? "btn-primary" : "btn-ghost"}`}
-            aria-selected={tool === id}
-            onClick={() => setTool(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-
-      <main className="mx-auto w-[min(1720px,calc(100vw-2rem))] pb-12">
+      <main className="mx-auto w-[min(1720px,calc(100vw-2rem))] pt-4 pb-12">
         {tool === "rewriter" ? <TriggerRewriter /> : null}
         {tool === "timer" ? <SessionTimer /> : null}
         {tool === "history" ? <RunHistory /> : null}

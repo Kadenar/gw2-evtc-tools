@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { RunRecord } from "../../lib/runHistory";
 import type { CmFilter, HistoryFilterActions, HistoryFilters, ResultFilter, SessionTypeFilter, SortMode } from "./types";
 import { filterRuns, sortRuns } from "./utils";
@@ -45,10 +45,11 @@ export function useRunHistoryFilters(runs: RunRecord[]): {
     [scopedRuns],
   );
 
-  useEffect(() => {
-    if (weekFilter !== "all" && !weekOptions.includes(weekFilter)) setWeekFilter("all");
-    if (wingFilter !== "all" && wingFilter !== "unmapped" && !wingOptions.includes(Number(wingFilter))) setWingFilter("all");
-  }, [weekFilter, weekOptions, wingFilter, wingOptions]);
+  // Snap a filter back to "all" when its chosen value drops out of the available
+  // options. Done during render (guarded, so it converges) rather than in a
+  // post-paint effect, which avoids an extra render pass.
+  if (weekFilter !== "all" && !weekOptions.includes(weekFilter)) setWeekFilter("all");
+  if (wingFilter !== "all" && wingFilter !== "unmapped" && !wingOptions.includes(Number(wingFilter))) setWingFilter("all");
 
   function resetFilters() {
     setQuery("");

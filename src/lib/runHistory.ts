@@ -1,4 +1,5 @@
 import { ENCOUNTER_PHASE_DATA_VERSION, type EncounterPhaseData, type SessionLog } from "./dpsReport";
+import { average } from "./format";
 
 export type ImportMode = "merge" | "replace";
 export type RunSessionType = "full-clear" | "practice";
@@ -114,7 +115,14 @@ export function sessionLogToRunRecord(log: SessionLog, sessionType: RunSessionTy
 export async function saveSessionLogs(logs: SessionLog[], sessionType: RunSessionType = "full-clear"): Promise<SaveRunsResult> {
   const existingRuns = await getAllRunRecords();
   const existingById = new Map(existingRuns.map((run) => [run.id, run]));
-  const records = logs.map((log) => sessionLogToRunRecord(log, sessionType, existingById.get(getRunId(log))));
+  // Dedupe by run id (last wins, matching IndexedDB put semantics) so duplicate
+  // inputs are stored and counted once.
+  const recordById = new Map<string, RunRecord>();
+  for (const log of logs) {
+    const id = getRunId(log);
+    recordById.set(id, sessionLogToRunRecord(log, sessionType, existingById.get(id)));
+  }
+  const records = Array.from(recordById.values());
 
   await putRunRecords(records);
 
@@ -186,14 +194,17 @@ export async function importRunHistoryBackup(backup: unknown, mode: ImportMode):
     createdAt: existingById.get(run.id)?.createdAt ?? run.createdAt,
     updatedAt: new Date().toISOString(),
   }));
+  // Dedupe by run id (last wins, matching IndexedDB put semantics) so duplicate
+  // backup entries are stored and counted once.
+  const uniqueRecords = Array.from(new Map(normalized.map((run) => [run.id, run])).values());
 
   if (mode === "replace") {
-    await replaceRunRecords(normalized);
+    await replaceRunRecords(uniqueRecords);
   } else {
-    await putRunRecords(normalized);
+    await putRunRecords(uniqueRecords);
   }
 
-  return normalized.reduce(
+  return uniqueRecords.reduce(
     (result, record) => {
       if (existingById.has(record.id)) {
         result.updated += 1;
@@ -250,6 +261,10 @@ function summarizeRuns(runs: RunRecord[]) {
   const decided = kills + wipes;
   const compDpsValues = runs.map((run) => run.compDps).filter((value): value is number => value != null);
   const durations = runs.map((run) => run.duration).filter((duration) => Number.isFinite(duration) && duration > 0);
+  const successfulDurations = runs
+    .filter((run) => run.success === true)
+    .map((run) => run.duration)
+    .filter((duration) => Number.isFinite(duration) && duration > 0);
   const totalDuration = durations.reduce((sum, duration) => sum + duration, 0);
 
   return {
@@ -260,7 +275,7 @@ function summarizeRuns(runs: RunRecord[]) {
     killRate: decided ? kills / decided : null,
     totalDuration,
     averageDuration: durations.length ? totalDuration / durations.length : 0,
-    bestDuration: durations.length ? Math.min(...durations) : null,
+    bestDuration: successfulDurations.length ? Math.min(...successfulDurations) : null,
     averageCompDps: average(compDpsValues),
   };
 }
@@ -363,7 +378,9 @@ function normalizeRunRecord(value: unknown): RunRecord {
   const start = readNumber(value, "start");
   const duration = readNumber(value, "duration");
   const isCm = readBoolean(value, "isCm");
-  const timestamp = start > 0 ? start : Date.parse(readString(value, "date")) / 1000;
+  const uploadTime = readNullableNumber(value, "uploadTime");
+  const date = readNullableString(value, "date");
+  const timestamp = getBackupTimestamp(start, date, uploadTime);
 
   return {
     id,
@@ -372,25 +389,47 @@ function normalizeRunRecord(value: unknown): RunRecord {
     source: readString(value, "source"),
     bossId: readNullableNumber(value, "bossId"),
     bossName,
-    encounterKey: readOptionalString(value, "encounterKey") ?? getEncounterKey(readNullableNumber(value, "bossId"), bossName, isCm),
+    encounterKey: readNullableString(value, "encounterKey") ?? getEncounterKey(readNullableNumber(value, "bossId"), bossName, isCm),
     wing: readNullableNumber(value, "wing"),
     success: readNullableBoolean(value, "success"),
     duration,
     start,
     end: readNumber(value, "end"),
-    uploadTime: readNullableNumber(value, "uploadTime"),
-    date: readOptionalString(value, "date") ?? new Date(timestamp * 1000).toISOString(),
-    weekKey: readOptionalString(value, "weekKey") ?? getIsoWeekKey(timestamp),
+    uploadTime,
+    date: new Date(timestamp * 1000).toISOString(),
+    weekKey: readBackupWeekKey(value, timestamp),
     isCm,
     sessionType: readRunSessionType(value),
     compDps: readNullableNumber(value, "compDps"),
     numberOfPlayers: readNullableNumber(value, "numberOfPlayers"),
     numberOfGroups: readNullableNumber(value, "numberOfGroups"),
     phaseData: readEncounterPhaseData(value),
-    createdAt: readOptionalString(value, "createdAt") ?? new Date().toISOString(),
-    updatedAt: readOptionalString(value, "updatedAt") ?? new Date().toISOString(),
+    createdAt: readNullableString(value, "createdAt") ?? new Date().toISOString(),
+    updatedAt: readNullableString(value, "updatedAt") ?? new Date().toISOString(),
     raw: isObject(value.raw) ? (value.raw as SessionLog["raw"]) : {},
   };
+}
+
+function getBackupTimestamp(start: number, date: string | null, uploadTime: number | null): number {
+  if (start > 0) return start;
+
+  if (date != null) {
+    const parsed = Date.parse(date) / 1000;
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+
+  if (uploadTime != null && uploadTime > 0) return uploadTime;
+
+  throw new Error('Backup run needs a positive "start", parseable "date", or positive "uploadTime".');
+}
+
+function readBackupWeekKey(value: Record<string, unknown>, timestamp: number): string {
+  const weekKey = readNullableString(value, "weekKey");
+  if (weekKey == null || !/^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$/.test(weekKey)) {
+    return getIsoWeekKey(timestamp);
+  }
+
+  return weekKey;
 }
 
 function getRunId(log: SessionLog): string {
@@ -406,6 +445,10 @@ function getRunTimestamp(log: SessionLog): number {
 }
 
 export function getIsoWeekKey(unixSeconds: number): string {
+  if (!Number.isFinite(unixSeconds)) {
+    throw new Error("Cannot build ISO week key from an invalid timestamp.");
+  }
+
   const date = new Date(unixSeconds * 1000);
   const utcDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const day = utcDate.getUTCDay() || 7;
@@ -424,11 +467,6 @@ function getEncounterKey(bossId: number | null, bossName: string, isCm: boolean)
   return `${base || "unknown"}${isCm ? "-cm" : ""}`;
 }
 
-function average(values: number[]): number | null {
-  if (!values.length) return null;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
 function toFiniteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -440,13 +478,6 @@ function isObject(value: unknown): value is Record<string, unknown> {
 function readString(value: Record<string, unknown>, key: string): string {
   const field = value[key];
   if (typeof field !== "string") throw new Error(`Backup run is missing string field "${key}".`);
-  return field;
-}
-
-function readOptionalString(value: Record<string, unknown>, key: string): string | null {
-  const field = value[key];
-  if (field == null) return null;
-  if (typeof field !== "string") throw new Error(`Backup run has invalid string field "${key}".`);
   return field;
 }
 
@@ -466,15 +497,6 @@ function readNumber(value: Record<string, unknown>, key: string): number {
 }
 
 function readNullableNumber(value: Record<string, unknown>, key: string): number | null {
-  const field = value[key];
-  if (field == null) return null;
-  if (typeof field !== "number" || !Number.isFinite(field)) {
-    throw new Error(`Backup run has invalid number field "${key}".`);
-  }
-  return field;
-}
-
-function readOptionalNumber(value: Record<string, unknown>, key: string): number | null {
   const field = value[key];
   if (field == null) return null;
   if (typeof field !== "number" || !Number.isFinite(field)) {
@@ -517,7 +539,7 @@ function readEncounterPhaseData(value: Record<string, unknown>): EncounterPhaseD
   }
 
   return {
-    version: readOptionalNumber(field, "version") ?? 1,
+    version: readNullableNumber(field, "version") ?? 1,
     fetchedAt,
     phases: phasesValue.map((phase, index) => readEncounterPhaseMetric(phase, index)),
     players: Array.isArray(field.players) ? field.players.map((player, index) => readEncounterPlayerMetric(player, index)) : [],

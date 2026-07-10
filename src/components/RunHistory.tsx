@@ -1,5 +1,5 @@
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { downloadBlob } from "../lib/format";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { downloadBlob, pluralize } from "../lib/format";
 import { fetchBundledRunHistoryBackup, getBundledRunHistorySources, getSingleBundledRunHistorySource } from "../lib/bundledRunHistory";
 import { fetchEncounterPhaseData } from "../lib/dpsReport";
 import { compactFieldClass, cx, fieldClass, inlineActionsClass, panelClass, runHistoryShellClass } from "../lib/ui";
@@ -20,6 +20,7 @@ import { DashboardTab } from "./run-history/DashboardTab";
 import { DowntimeTab } from "./run-history/DowntimeTab";
 import { EncountersTab } from "./run-history/EncountersTab";
 import { ManageRunsTab } from "./run-history/ManageRunsTab";
+import { PlayersTab } from "./run-history/PlayersTab";
 import { RunsTab } from "./run-history/RunsTab";
 import { WeeksTab } from "./run-history/WeeksTab";
 import { WingsTab } from "./run-history/WingsTab";
@@ -40,6 +41,7 @@ const HISTORY_VIEWS: Array<{ id: HistoryView; label: string; group: "Primary" | 
   { id: "wings", label: "Wings", group: "Analysis" },
   { id: "encounters", label: "Encounters", group: "Analysis" },
   { id: "downtime", label: "Downtime", group: "Analysis" },
+  { id: "players", label: "Players", group: "Analysis" },
 ];
 
 const HISTORY_SCOPE_OPTIONS = [
@@ -52,6 +54,11 @@ const IMPORT_MODE_OPTIONS = [
   { value: "merge", label: "Merge" },
   { value: "replace", label: "Replace" },
 ] satisfies Array<{ value: ImportMode; label: string }>;
+
+// Phase fetches hit rate-limited dps.report; permanently failing permalinks
+// (e.g. 404s) would otherwise be retried every time a save refires the
+// ensure effects. Retries reset on import or page reload.
+const MAX_PHASE_FETCH_ATTEMPTS = 2;
 
 export function RunHistory() {
   const bundledRunHistorySource = getSingleBundledRunHistorySource();
@@ -68,6 +75,17 @@ export function RunHistory() {
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
   const [phaseLoadByRunId, setPhaseLoadByRunId] = useState<Record<string, boolean>>({});
   const [phaseErrorByRunId, setPhaseErrorByRunId] = useState<Record<string, string>>({});
+  // ensureRunPhaseData can be re-entered while a previous loop is mid-fetch
+  // (every save re-fires the effects that call it); state snapshots inside the
+  // async loop go stale, so cross-invocation dedupe lives in refs instead.
+  // epoch bumps whenever the stored dataset changes (delete/clear/import) so
+  // in-flight loops abort instead of re-saving stale records.
+  const phaseFetchGuardsRef = useRef({
+    inFlight: new Set<string>(),
+    completed: new Set<string>(),
+    failed: new Map<string, number>(),
+    epoch: 0,
+  });
 
   const { filters, filterActions, filteredRuns, filteredRunsAllWeeks, scopedRuns, sortedRuns, weekOptions, wingOptions } = useRunHistoryFilters(runs);
   const weeks = useMemo(() => summarizeRunsByWeek(filteredRunsAllWeeks), [filteredRunsAllWeeks]);
@@ -120,7 +138,7 @@ export function RunHistory() {
     if (!encounter) return;
 
     void ensureRunPhaseData(encounter.runsList);
-  }, [selectedEncounterKey]);
+  }, [selectedEncounterKey, encounterSummaries]);
 
   useEffect(() => {
     if (!status || statusTone !== "info") return;
@@ -172,7 +190,7 @@ export function RunHistory() {
       const json = JSON.stringify(backup, null, 2);
       downloadBlob(new Blob([json], { type: "application/json" }), `gw2-run-history-${backup.exportedAt.slice(0, 10)}.json`);
       setStatusTone("info");
-      setStatus(`Exported ${backup.runs.length} run${backup.runs.length === 1 ? "" : "s"}.`);
+      setStatus(`Exported ${backup.runs.length} ${pluralize(backup.runs.length, "run")}.`);
     } catch (err) {
       setStatusTone("error");
       setStatus(err instanceof Error ? err.message : "Could not export backup.");
@@ -217,12 +235,16 @@ export function RunHistory() {
 
   async function importParsedBackup(parsed: unknown, mode: ImportMode) {
     const result = await importRunHistoryBackup(parsed, mode);
+    // Imported records may lack cached phase data even for ids fetched earlier.
+    phaseFetchGuardsRef.current.completed.clear();
+    phaseFetchGuardsRef.current.failed.clear();
+    phaseFetchGuardsRef.current.epoch += 1;
     await loadRuns();
     setStatusTone("info");
     setStatus(
       mode === "replace"
-        ? `Restored ${result.saved} run${result.saved === 1 ? "" : "s"}.`
-        : `Imported ${result.saved} new and updated ${result.updated} existing run${result.updated === 1 ? "" : "s"}.`,
+        ? `Restored ${result.saved} ${pluralize(result.saved, "run")}.`
+        : `Imported ${result.saved} new and updated ${result.updated} existing ${pluralize(result.updated, "run")}.`,
     );
   }
 
@@ -234,14 +256,23 @@ export function RunHistory() {
     const uniqueRuns = Array.from(new Map(runsToEnsure.map((run) => [run.id, run])).values())
       .filter((run) => !hasCurrentPhaseData(run.phaseData) && run.raw.encounter?.jsonAvailable !== false)
       .sort((left, right) => right.start - left.start);
+    const guards = phaseFetchGuardsRef.current;
+    const { inFlight, completed, failed } = guards;
+    const epoch = guards.epoch;
 
     for (const run of uniqueRuns) {
-      if (phaseLoadByRunId[run.id]) continue;
+      // Dataset changed since this loop's snapshot was taken; a fresh loop
+      // over current runs will be kicked off by the effects after loadRuns.
+      if (guards.epoch !== epoch) return;
+      if (inFlight.has(run.id) || completed.has(run.id)) continue;
+      if ((failed.get(run.id) ?? 0) >= MAX_PHASE_FETCH_ATTEMPTS) continue;
 
+      inFlight.add(run.id);
       setPhaseLoadByRunId((current) => ({ ...current, [run.id]: true }));
 
       try {
         const phaseData = await fetchEncounterPhaseData(run.permalink);
+        if (guards.epoch !== epoch) return;
         const updatedRun: RunRecord = {
           ...run,
           phaseData,
@@ -249,6 +280,8 @@ export function RunHistory() {
         };
 
         await saveRunRecord(updatedRun);
+        completed.add(run.id);
+        failed.delete(run.id);
         setRuns((current) => current.map((existing) => (existing.id === run.id ? updatedRun : existing)));
         setPhaseErrorByRunId((current) => {
           if (!(run.id in current)) return current;
@@ -257,11 +290,13 @@ export function RunHistory() {
           return next;
         });
       } catch (err) {
+        failed.set(run.id, (failed.get(run.id) ?? 0) + 1);
         setPhaseErrorByRunId((current) => ({
           ...current,
           [run.id]: err instanceof Error ? err.message : "Could not load phase data.",
         }));
       } finally {
+        inFlight.delete(run.id);
         setPhaseLoadByRunId((current) => {
           if (!(run.id in current)) return current;
           const next = { ...current };
@@ -272,15 +307,24 @@ export function RunHistory() {
     }
   }
 
+  const handleEnsureRunPhaseData = useCallback((runsToEnsure: RunRecord[]) => {
+    void ensureRunPhaseData(runsToEnsure);
+  }, []);
+
   async function deleteSelectedRuns() {
-    if (!selectedRunIds.length || !window.confirm(`Delete ${selectedRunIds.length} selected run${selectedRunIds.length === 1 ? "" : "s"}?`)) return;
-    await deleteRuns(selectedRunIds, `Deleted ${selectedRunIds.length} selected run${selectedRunIds.length === 1 ? "" : "s"}.`);
+    if (!selectedRunIds.length || !window.confirm(`Delete ${selectedRunIds.length} selected ${pluralize(selectedRunIds.length, "run")}?`)) return;
+    await deleteRuns(selectedRunIds, `Deleted ${selectedRunIds.length} selected ${pluralize(selectedRunIds.length, "run")}.`);
   }
 
   async function deleteRuns(ids: string[], successMessage: string) {
     setIsWorking(true);
     try {
       await Promise.all(ids.map((id) => deleteRunRecord(id)));
+      ids.forEach((id) => {
+        phaseFetchGuardsRef.current.completed.delete(id);
+        phaseFetchGuardsRef.current.failed.delete(id);
+      });
+      phaseFetchGuardsRef.current.epoch += 1;
       setSelectedRunIds((current) => current.filter((id) => !ids.includes(id)));
       await loadRuns();
       setStatusTone("info");
@@ -299,6 +343,9 @@ export function RunHistory() {
     setIsWorking(true);
     try {
       await clearRunHistory();
+      phaseFetchGuardsRef.current.completed.clear();
+      phaseFetchGuardsRef.current.failed.clear();
+      phaseFetchGuardsRef.current.epoch += 1;
       await loadRuns();
       setSelectedRunIds([]);
       setStatusTone("info");
@@ -381,9 +428,6 @@ export function RunHistory() {
               setSelectedEncounterKey(encounterKey);
               setView("encounters");
             }}
-            onEnsureRunPhaseData={(runsToEnsure) => {
-              void ensureRunPhaseData(runsToEnsure);
-            }}
           />
         );
       case "wings":
@@ -410,6 +454,17 @@ export function RunHistory() {
             weekOptions={weekOptions}
             wingOptions={wingOptions}
             night={selectedNight}
+          />
+        );
+      case "players":
+        return (
+          <PlayersTab
+            filters={filters}
+            filterActions={filterActions}
+            weekOptions={weekOptions}
+            wingOptions={wingOptions}
+            runs={runs}
+            onEnsureRunPhaseData={handleEnsureRunPhaseData}
           />
         );
     }
