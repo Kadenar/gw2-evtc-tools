@@ -156,7 +156,7 @@ export function TriggerRewriter() {
                   min={0}
                   max={31}
                   value={manualOffset ?? suggestedOffset}
-                  onChange={(event) => setManualOffset(Number(event.target.value))}
+                  onChange={(event) => setManualOffset(event.target.value === "" ? null : Number(event.target.value))}
                 />
               </label>
               <label className="my-[0.8rem] flex items-center gap-[0.55rem] text-muted">

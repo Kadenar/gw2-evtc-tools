@@ -115,7 +115,14 @@ export function sessionLogToRunRecord(log: SessionLog, sessionType: RunSessionTy
 export async function saveSessionLogs(logs: SessionLog[], sessionType: RunSessionType = "full-clear"): Promise<SaveRunsResult> {
   const existingRuns = await getAllRunRecords();
   const existingById = new Map(existingRuns.map((run) => [run.id, run]));
-  const records = logs.map((log) => sessionLogToRunRecord(log, sessionType, existingById.get(getRunId(log))));
+  // Dedupe by run id (last wins, matching IndexedDB put semantics) so duplicate
+  // inputs are stored and counted once.
+  const recordById = new Map<string, RunRecord>();
+  for (const log of logs) {
+    const id = getRunId(log);
+    recordById.set(id, sessionLogToRunRecord(log, sessionType, existingById.get(id)));
+  }
+  const records = Array.from(recordById.values());
 
   await putRunRecords(records);
 
@@ -187,14 +194,17 @@ export async function importRunHistoryBackup(backup: unknown, mode: ImportMode):
     createdAt: existingById.get(run.id)?.createdAt ?? run.createdAt,
     updatedAt: new Date().toISOString(),
   }));
+  // Dedupe by run id (last wins, matching IndexedDB put semantics) so duplicate
+  // backup entries are stored and counted once.
+  const uniqueRecords = Array.from(new Map(normalized.map((run) => [run.id, run])).values());
 
   if (mode === "replace") {
-    await replaceRunRecords(normalized);
+    await replaceRunRecords(uniqueRecords);
   } else {
-    await putRunRecords(normalized);
+    await putRunRecords(uniqueRecords);
   }
 
-  return normalized.reduce(
+  return uniqueRecords.reduce(
     (result, record) => {
       if (existingById.has(record.id)) {
         result.updated += 1;

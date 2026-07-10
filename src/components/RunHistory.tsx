@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { downloadBlob, pluralize } from "../lib/format";
 import { fetchBundledRunHistoryBackup, getBundledRunHistorySources, getSingleBundledRunHistorySource } from "../lib/bundledRunHistory";
 import { fetchEncounterPhaseData } from "../lib/dpsReport";
@@ -70,6 +70,10 @@ export function RunHistory() {
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
   const [phaseLoadByRunId, setPhaseLoadByRunId] = useState<Record<string, boolean>>({});
   const [phaseErrorByRunId, setPhaseErrorByRunId] = useState<Record<string, string>>({});
+  // ensureRunPhaseData can be re-entered while a previous loop is mid-fetch
+  // (every save re-fires the effects that call it); state snapshots inside the
+  // async loop go stale, so cross-invocation dedupe lives in refs instead.
+  const phaseFetchGuardsRef = useRef({ inFlight: new Set<string>(), completed: new Set<string>() });
 
   const { filters, filterActions, filteredRuns, filteredRunsAllWeeks, scopedRuns, sortedRuns, weekOptions, wingOptions } = useRunHistoryFilters(runs);
   const weeks = useMemo(() => summarizeRunsByWeek(filteredRunsAllWeeks), [filteredRunsAllWeeks]);
@@ -219,6 +223,8 @@ export function RunHistory() {
 
   async function importParsedBackup(parsed: unknown, mode: ImportMode) {
     const result = await importRunHistoryBackup(parsed, mode);
+    // Imported records may lack cached phase data even for ids fetched earlier.
+    phaseFetchGuardsRef.current.completed.clear();
     await loadRuns();
     setStatusTone("info");
     setStatus(
@@ -236,10 +242,12 @@ export function RunHistory() {
     const uniqueRuns = Array.from(new Map(runsToEnsure.map((run) => [run.id, run])).values())
       .filter((run) => !hasCurrentPhaseData(run.phaseData) && run.raw.encounter?.jsonAvailable !== false)
       .sort((left, right) => right.start - left.start);
+    const { inFlight, completed } = phaseFetchGuardsRef.current;
 
     for (const run of uniqueRuns) {
-      if (phaseLoadByRunId[run.id]) continue;
+      if (inFlight.has(run.id) || completed.has(run.id)) continue;
 
+      inFlight.add(run.id);
       setPhaseLoadByRunId((current) => ({ ...current, [run.id]: true }));
 
       try {
@@ -251,6 +259,7 @@ export function RunHistory() {
         };
 
         await saveRunRecord(updatedRun);
+        completed.add(run.id);
         setRuns((current) => current.map((existing) => (existing.id === run.id ? updatedRun : existing)));
         setPhaseErrorByRunId((current) => {
           if (!(run.id in current)) return current;
@@ -264,6 +273,7 @@ export function RunHistory() {
           [run.id]: err instanceof Error ? err.message : "Could not load phase data.",
         }));
       } finally {
+        inFlight.delete(run.id);
         setPhaseLoadByRunId((current) => {
           if (!(run.id in current)) return current;
           const next = { ...current };
@@ -283,6 +293,7 @@ export function RunHistory() {
     setIsWorking(true);
     try {
       await Promise.all(ids.map((id) => deleteRunRecord(id)));
+      ids.forEach((id) => phaseFetchGuardsRef.current.completed.delete(id));
       setSelectedRunIds((current) => current.filter((id) => !ids.includes(id)));
       await loadRuns();
       setStatusTone("info");
@@ -301,6 +312,7 @@ export function RunHistory() {
     setIsWorking(true);
     try {
       await clearRunHistory();
+      phaseFetchGuardsRef.current.completed.clear();
       await loadRuns();
       setSelectedRunIds([]);
       setStatusTone("info");
