@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { downloadBlob, pluralize } from "../lib/format";
 import { fetchBundledRunHistoryBackup, getBundledRunHistorySources, getSingleBundledRunHistorySource } from "../lib/bundledRunHistory";
 import { fetchEncounterPhaseData } from "../lib/dpsReport";
@@ -307,6 +307,10 @@ export function RunHistory() {
     }
   }
 
+  const handleEnsureRunPhaseData = useCallback((runsToEnsure: RunRecord[]) => {
+    void ensureRunPhaseData(runsToEnsure);
+  }, []);
+
   async function deleteSelectedRuns() {
     if (!selectedRunIds.length || !window.confirm(`Delete ${selectedRunIds.length} selected ${pluralize(selectedRunIds.length, "run")}?`)) return;
     await deleteRuns(selectedRunIds, `Deleted ${selectedRunIds.length} selected ${pluralize(selectedRunIds.length, "run")}.`);
@@ -460,9 +464,7 @@ export function RunHistory() {
             weekOptions={weekOptions}
             wingOptions={wingOptions}
             runs={runs}
-            onEnsureRunPhaseData={(runsToEnsure) => {
-              void ensureRunPhaseData(runsToEnsure);
-            }}
+            onEnsureRunPhaseData={handleEnsureRunPhaseData}
           />
         );
     }
