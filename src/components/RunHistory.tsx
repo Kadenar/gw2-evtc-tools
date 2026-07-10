@@ -55,6 +55,11 @@ const IMPORT_MODE_OPTIONS = [
   { value: "replace", label: "Replace" },
 ] satisfies Array<{ value: ImportMode; label: string }>;
 
+// Phase fetches hit rate-limited dps.report; permanently failing permalinks
+// (e.g. 404s) would otherwise be retried every time a save refires the
+// ensure effects. Retries reset on import or page reload.
+const MAX_PHASE_FETCH_ATTEMPTS = 2;
+
 export function RunHistory() {
   const bundledRunHistorySource = getSingleBundledRunHistorySource();
   const bundledRunHistoryFileCount = getBundledRunHistorySources().length;
@@ -73,7 +78,14 @@ export function RunHistory() {
   // ensureRunPhaseData can be re-entered while a previous loop is mid-fetch
   // (every save re-fires the effects that call it); state snapshots inside the
   // async loop go stale, so cross-invocation dedupe lives in refs instead.
-  const phaseFetchGuardsRef = useRef({ inFlight: new Set<string>(), completed: new Set<string>() });
+  // epoch bumps whenever the stored dataset changes (delete/clear/import) so
+  // in-flight loops abort instead of re-saving stale records.
+  const phaseFetchGuardsRef = useRef({
+    inFlight: new Set<string>(),
+    completed: new Set<string>(),
+    failed: new Map<string, number>(),
+    epoch: 0,
+  });
 
   const { filters, filterActions, filteredRuns, filteredRunsAllWeeks, scopedRuns, sortedRuns, weekOptions, wingOptions } = useRunHistoryFilters(runs);
   const weeks = useMemo(() => summarizeRunsByWeek(filteredRunsAllWeeks), [filteredRunsAllWeeks]);
@@ -225,6 +237,8 @@ export function RunHistory() {
     const result = await importRunHistoryBackup(parsed, mode);
     // Imported records may lack cached phase data even for ids fetched earlier.
     phaseFetchGuardsRef.current.completed.clear();
+    phaseFetchGuardsRef.current.failed.clear();
+    phaseFetchGuardsRef.current.epoch += 1;
     await loadRuns();
     setStatusTone("info");
     setStatus(
@@ -242,16 +256,23 @@ export function RunHistory() {
     const uniqueRuns = Array.from(new Map(runsToEnsure.map((run) => [run.id, run])).values())
       .filter((run) => !hasCurrentPhaseData(run.phaseData) && run.raw.encounter?.jsonAvailable !== false)
       .sort((left, right) => right.start - left.start);
-    const { inFlight, completed } = phaseFetchGuardsRef.current;
+    const guards = phaseFetchGuardsRef.current;
+    const { inFlight, completed, failed } = guards;
+    const epoch = guards.epoch;
 
     for (const run of uniqueRuns) {
+      // Dataset changed since this loop's snapshot was taken; a fresh loop
+      // over current runs will be kicked off by the effects after loadRuns.
+      if (guards.epoch !== epoch) return;
       if (inFlight.has(run.id) || completed.has(run.id)) continue;
+      if ((failed.get(run.id) ?? 0) >= MAX_PHASE_FETCH_ATTEMPTS) continue;
 
       inFlight.add(run.id);
       setPhaseLoadByRunId((current) => ({ ...current, [run.id]: true }));
 
       try {
         const phaseData = await fetchEncounterPhaseData(run.permalink);
+        if (guards.epoch !== epoch) return;
         const updatedRun: RunRecord = {
           ...run,
           phaseData,
@@ -260,6 +281,7 @@ export function RunHistory() {
 
         await saveRunRecord(updatedRun);
         completed.add(run.id);
+        failed.delete(run.id);
         setRuns((current) => current.map((existing) => (existing.id === run.id ? updatedRun : existing)));
         setPhaseErrorByRunId((current) => {
           if (!(run.id in current)) return current;
@@ -268,6 +290,7 @@ export function RunHistory() {
           return next;
         });
       } catch (err) {
+        failed.set(run.id, (failed.get(run.id) ?? 0) + 1);
         setPhaseErrorByRunId((current) => ({
           ...current,
           [run.id]: err instanceof Error ? err.message : "Could not load phase data.",
@@ -293,7 +316,11 @@ export function RunHistory() {
     setIsWorking(true);
     try {
       await Promise.all(ids.map((id) => deleteRunRecord(id)));
-      ids.forEach((id) => phaseFetchGuardsRef.current.completed.delete(id));
+      ids.forEach((id) => {
+        phaseFetchGuardsRef.current.completed.delete(id);
+        phaseFetchGuardsRef.current.failed.delete(id);
+      });
+      phaseFetchGuardsRef.current.epoch += 1;
       setSelectedRunIds((current) => current.filter((id) => !ids.includes(id)));
       await loadRuns();
       setStatusTone("info");
@@ -313,6 +340,8 @@ export function RunHistory() {
     try {
       await clearRunHistory();
       phaseFetchGuardsRef.current.completed.clear();
+      phaseFetchGuardsRef.current.failed.clear();
+      phaseFetchGuardsRef.current.epoch += 1;
       await loadRuns();
       setSelectedRunIds([]);
       setStatusTone("info");
