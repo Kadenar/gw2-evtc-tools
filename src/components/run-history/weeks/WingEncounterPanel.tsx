@@ -67,13 +67,15 @@ export function WingEncounterPanel({
       const previous = getComparableEncounterDuration(row.previous);
       if (current != null) acc.current += current;
       if (previous != null) acc.previous += previous;
+      if ((current == null) !== (previous == null)) acc.hasCoverageMismatch = true;
       return acc;
     },
-    { current: 0, previous: 0 },
+    { current: 0, previous: 0, hasCoverageMismatch: false },
   );
-  const selectedBest = selectedDetail ? totals.current : null;
-  const compareBest = compareDetail ? totals.previous : null;
-  const bothWeeks = selectedDetail != null && compareDetail != null;
+  const selectedBest = selectedDetail && totals.current > 0 ? totals.current : null;
+  const compareBest = compareDetail && totals.previous > 0 ? totals.previous : null;
+  const hasCoverageMismatch = selectedDetail != null && compareDetail != null && totals.hasCoverageMismatch;
+  const bothWeeks = selectedDetail != null && compareDetail != null && !hasCoverageMismatch;
 
   return (
     <div className={tableWrapClass}>
@@ -184,6 +186,9 @@ export function WingEncounterPanel({
           </tr>
         </tfoot>
       </table>
+      {hasCoverageMismatch ? (
+        <p className="m-0 border-t border-base-300 px-3 py-2 text-sm text-muted">Wing total deltas are hidden because encounter coverage differs between weeks.</p>
+      ) : null}
     </div>
   );
 }
