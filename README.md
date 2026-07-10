@@ -144,6 +144,18 @@ The rewriter detects likely boss id offsets in the first 32 bytes of the EVTC pa
 
 Because EVTC files are a third-party combat log format, verify modified logs with Elite Insights or dps.report before relying on them for anything important.
 
+## Run History: session grouping and limitations
+
+Run History groups individual logs into **raid nights** to compute downtime, wipes, and per-night timing. The grouping key is **session type + calendar day** (e.g. a full-clear night vs. a practice night), where the calendar day is derived from each run's local start time.
+
+This reflects the intended workflow: **one raid session per day**, typically one full-clear session on one day and one practice session on another. Under that pattern each session maps cleanly to exactly one raid night.
+
+Known limitations that follow from this model:
+
+- **Two same-type sessions on the same calendar day merge into one night.** If a team runs, say, an afternoon practice and an evening practice on the same day, both are treated as a single night. The gap between them is then counted as downtime, inflating the night's downtime and total time. Splitting sessions is intentionally not implemented, because sessions are assumed to be ≤3h and one-per-day.
+- **Nights use local-time day boundaries; weeks use UTC.** A session that starts before and ends after local midnight is split across two nights, and because ISO week keys are UTC-based, a late night can occasionally fall into a different week bucket than expected for non-UTC users.
+- **Week comparison pairs raid nights by order, not by weekday.** When comparing two weeks, "night 1 vs night 1" and "night 2 vs night 2" are matched by position within each week, not by matching weekdays. If the two weeks have different night counts or fall on different days, the pairing is by ordinal, not by date.
+
 ## Privacy model
 
 - Trigger rewriting is local only. The uploaded file is read in your browser and downloaded back to you.

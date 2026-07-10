@@ -33,6 +33,8 @@ type WingDefinition = { code: string; label: string };
 const WING_DEFINITIONS = buildWingDefinitions();
 const ENCOUNTER_CODE_BY_NAME = buildEncounterCodeByName();
 
+// Assumes one session per (session type, calendar day) — see README "session grouping and limitations".
+// Don't add gap-splitting; two same-type sessions on one day merging is a documented trade-off, not a bug.
 export function buildRaidNightSummaries(runs: RunRecord[]): RaidNightSummary[] {
   const byNight = new Map<string, RunRecord[]>();
 

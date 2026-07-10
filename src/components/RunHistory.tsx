@@ -122,7 +122,7 @@ export function RunHistory() {
     if (!encounter) return;
 
     void ensureRunPhaseData(encounter.runsList);
-  }, [selectedEncounterKey]);
+  }, [selectedEncounterKey, encounterSummaries]);
 
   useEffect(() => {
     if (!status || statusTone !== "info") return;

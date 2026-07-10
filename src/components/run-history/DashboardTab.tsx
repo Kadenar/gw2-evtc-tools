@@ -25,6 +25,10 @@ export function DashboardTab({
   const trendLabel = sessionTypeFilter === "practice" ? "Practice Time Trend" : sessionTypeFilter === "all" ? "Run Time Trend" : "Full Clear Time Trend";
   const breakdownLabel =
     sessionTypeFilter === "practice" ? "Current practice breakdown" : sessionTypeFilter === "all" ? "Current run breakdown" : "Current full clear breakdown";
+  const bestWing = wingSummaries.reduce<WingHistorySummary | null>(
+    (best, wing) => (wing.bestTime != null && (best?.bestTime == null || wing.bestTime < best.bestTime) ? wing : best),
+    null,
+  );
 
   return (
     <>
@@ -45,8 +49,8 @@ export function DashboardTab({
           />
           <StatCard
             label="Best Wing Split"
-            value={wingSummaries[0] ? `W${wingSummaries[0].wing}` : "N/A"}
-            detail={wingSummaries[0]?.bestTime == null ? "No wing data" : `${formatSeconds(wingSummaries[0].bestTime)} PB`}
+            value={bestWing ? `W${bestWing.wing}` : "N/A"}
+            detail={bestWing?.bestTime == null ? "No wing data" : `${formatSeconds(bestWing.bestTime)} PB`}
           />
           <StatCard label="Downtime" value={latestNight ? formatSeconds(latestNight.downtime) : "N/A"} detail={formatSignedSecondsDelta(latestNight?.downtime, previousNight?.downtime)} />
           <StatCard label="Wipes" value={latestNight ? String(latestNight.wipes) : "N/A"} detail={formatSignedCountDelta(latestNight?.wipes, previousNight?.wipes)} />

@@ -1,5 +1,5 @@
 import { formatSeconds } from "../../../lib/format";
-import type { RunRecord } from "../../../lib/runHistory";
+import { hasCurrentPhaseData, type RunRecord } from "../../../lib/runHistory";
 import { tableWrapClass } from "../../../lib/ui";
 import type { EncounterPhaseStatus } from "../types";
 import { formatDps, pluralize } from "../utils";
@@ -16,7 +16,8 @@ export function EncounterPhaseTable({
 
   // Aggregate phase stats from cached runs
   const phaseSummaries = summarizeEncounterPhases(runs);
-  const showAverageBossDps = new Set(runs.map((run) => run.weekKey)).size > 1;
+  const showAverageBossDps =
+    new Set(runs.filter((run) => hasCurrentPhaseData(run.phaseData)).map((run) => run.weekKey)).size > 1;
 
   return (
     <div className="grid gap-[0.45rem]">

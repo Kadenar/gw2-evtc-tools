@@ -274,7 +274,7 @@ export function summarizeSession(logs: SessionLog[]): SessionSummary {
 
   const start = valid.length ? Math.min(...valid.map((log) => log.start)) : null;
   const end = valid.length ? Math.max(...valid.map((log) => log.end)) : null;
-  const combat = sorted.reduce((sum, log) => sum + log.duration, 0);
+  const combat = valid.reduce((sum, log) => sum + log.duration, 0);
   const elapsed = start != null && end != null ? end - start : combat;
 
   return {

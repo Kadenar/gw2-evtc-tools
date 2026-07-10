@@ -59,23 +59,18 @@ export function WeeksTab({
       return;
     }
 
-    setSelectedWeekKey((current) => {
-      if (current !== "none" && weeks.some((week) => week.weekKey === current)) return current;
-      return weeks[0].weekKey;
-    });
+    // Resolve selection first, then derive compare from it so the two never collide (no stale-read race between effects).
+    const nextSelected =
+      selectedWeekKey !== "none" && weeks.some((week) => week.weekKey === selectedWeekKey) ? selectedWeekKey : weeks[0].weekKey;
 
-    setCompareWeekKey((current) => {
-      if (current === "none") return current;
-      if (weeks.some((week) => week.weekKey === current) && current !== weeks[0].weekKey) return current;
-      return weeks[1]?.weekKey ?? "none";
-    });
-  }, [weeks]);
+    const compareStillValid =
+      compareWeekKey !== "none" && weeks.some((week) => week.weekKey === compareWeekKey) && compareWeekKey !== nextSelected;
+    const nextCompare =
+      compareWeekKey === "none" ? "none" : compareStillValid ? compareWeekKey : weeks.find((week) => week.weekKey !== nextSelected)?.weekKey ?? "none";
 
-  useEffect(() => {
-    if (selectedWeekKey === "none" || compareWeekKey === "none") return;
-    if (selectedWeekKey !== compareWeekKey) return;
-    setCompareWeekKey(weeks.find((week) => week.weekKey !== selectedWeekKey)?.weekKey ?? "none");
-  }, [compareWeekKey, selectedWeekKey, weeks]);
+    setSelectedWeekKey(nextSelected);
+    setCompareWeekKey(nextCompare);
+  }, [weeks, selectedWeekKey, compareWeekKey]);
 
   useEffect(() => {
     if (!wingRows.length) {
