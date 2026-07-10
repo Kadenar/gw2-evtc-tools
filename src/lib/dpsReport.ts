@@ -258,7 +258,7 @@ export function metadataToSessionLog(metadata: DpsReportMetadata, source: string
 
 export function summarizeSession(logs: SessionLog[]): SessionSummary {
   const sorted = [...logs].sort((a, b) => a.start - b.start || a.end - b.end);
-  const valid = sorted.filter((log) => Number.isFinite(log.start) && log.start > 0);
+  const valid = sorted.filter(hasValidTiming);
 
   const wingMap = new Map<number | null, SessionLog[]>();
   for (const log of sorted) {
@@ -289,10 +289,10 @@ export function summarizeSession(logs: SessionLog[]): SessionSummary {
 }
 
 function summarizeWing(wing: number | null, wingLogs: SessionLog[]): WingSummary {
-  const wingValid = wingLogs.filter((log) => log.start > 0 && log.end >= log.start);
+  const wingValid = wingLogs.filter(hasValidTiming);
   const start = wingValid.length ? Math.min(...wingValid.map((log) => log.start)) : 0;
   const end = wingValid.length ? Math.max(...wingValid.map((log) => log.end)) : 0;
-  const combat = wingLogs.reduce((sum, log) => sum + log.duration, 0);
+  const combat = wingValid.reduce((sum, log) => sum + log.duration, 0);
   const elapsed = end > start ? end - start : combat;
 
   return {
@@ -305,6 +305,17 @@ function summarizeWing(wing: number | null, wingLogs: SessionLog[]): WingSummary
     combat,
     downtime: Math.max(0, elapsed - combat),
   };
+}
+
+function hasValidTiming(log: SessionLog): boolean {
+  return (
+    Number.isFinite(log.start)
+    && log.start > 0
+    && Number.isFinite(log.end)
+    && log.end >= log.start
+    && Number.isFinite(log.duration)
+    && log.duration >= 0
+  );
 }
 
 export function logsToCsv(logs: SessionLog[]): string {
