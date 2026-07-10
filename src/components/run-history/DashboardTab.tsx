@@ -291,11 +291,11 @@ function TrendTooltip({
 }
 
 function formatChartTime(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0m";
   const minutes = Math.round(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
-  return hours > 0 ? `${hours}:${String(remainder).padStart(2, "0")}` : `${minutes}:00`;
+  return hours > 0 ? `${hours}h ${remainder}m` : `${minutes}m`;
 }
 
 function getLongestDowntime(night: RaidNightSummary | null): number | null {
