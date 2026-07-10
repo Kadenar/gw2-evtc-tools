@@ -135,7 +135,7 @@ export function SessionTimer() {
 
   return (
     <section className="grid gap-4">
-      <div className={cx(panelClass, "grid items-start gap-4 [grid-template-columns:minmax(0,1fr)_minmax(320px,0.75fr)] max-nav:grid-cols-1")}>
+      <div className={cx(panelClass, "grid items-start gap-4 grid-cols-[minmax(0,1fr)_minmax(320px,0.75fr)] max-nav:grid-cols-1")}>
         <div>
           <h3 className="mb-3 mt-0 text-[1.25rem]">Use existing dps.report links</h3>
         </div>

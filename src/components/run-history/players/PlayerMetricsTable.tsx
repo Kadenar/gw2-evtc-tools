@@ -50,7 +50,7 @@ export function PlayerMetricsTable({
             <Fragment key={row.key}>
               <tr className={cx("transition-colors", isExpanded && "bg-primary/6")}>
                 {subgroupSpan > 0 ? (
-                  <td className="border-r border-line bg-base-100/55 text-center !align-middle" rowSpan={subgroupSpan}>
+                  <td className="border-r border-line bg-base-100/55 text-center align-middle!" rowSpan={subgroupSpan}>
                     <strong className="text-[1rem]">{row.subgroup ?? "-"}</strong>
                   </td>
                 ) : null}

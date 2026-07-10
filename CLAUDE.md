@@ -27,9 +27,17 @@ npm install       # install deps (.npmrc pins public npm registry)
 npm run dev        # vite dev server on http://localhost:5175 (strict port)
 npm run build      # tsc -b type-check, then vite build -> dist/
 npm run preview    # preview production build
+npm run lint       # eslint . (flat config)
+npm run lint:fix   # eslint . --fix
 ```
 
-There is no test runner and no linter configured. Verify changes with `npm run build` (catches type errors) and by running the app.
+There is no test runner. Verify changes with `npm run build` (catches type errors), `npm run lint`, and by running the app.
+
+### Linting
+
+ESLint (flat config, `eslint.config.js`) covers React hooks correctness (`eslint-plugin-react-hooks`) and general code-quality rules. Type checking is left to `tsc -b`.
+
+Important: this project uses the native-port `typescript@7`, whose npm package no longer ships the classic compiler API. `typescript-eslint` cannot run against it, so ESLint parses TS/TSX with **Babel** (`@babel/eslint-parser` + `@babel/preset-typescript`/`preset-react`) — no dependency on the `typescript` package. Because Babel strips types before scope analysis, the core `no-unused-vars` and `no-undef` rules are turned off (they false-positive on type positions); `tsc` handles both. Don't add `typescript-eslint` back unless the project moves off the native port.
 
 ## Layout
 
