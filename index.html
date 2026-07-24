@@ -1,5 +1,26 @@
 <!doctype html>
 <html lang="en">
+  <script>
+      // Set an explicit data-theme before first paint so daisyUI and the
+      // shadcn CSS variables stay in sync. theme-change only writes data-theme
+      // once a choice is stored, so a fresh (incognito) load would otherwise
+      // mix daisyUI's prefers-dark surfaces with shadcn's light :root tokens,
+      // producing unreadable dark-on-dark text. This also prevents theme FOUC.
+      (function () {
+        try {
+          var stored = localStorage.getItem("theme");
+          var theme =
+            stored === "dark" || stored === "light"
+              ? stored
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "light");
+        }
+      })();
+    </script>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
